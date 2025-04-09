@@ -9,14 +9,33 @@ release = false
 
 # https://github.com/rustwasm/wasm-pack/issues/1247
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = false
+wasm-opt = ['-Oz']
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version="0.5.0", features=['http', 'axum'] }
-worker-macros = { version="0.5.0", features=['http'] }
-axum  = { version = "0.7", default-features = false }
-tower-service = "0.3.2"
-console_error_panic_hook = { version = "0.1.1" }
+# Default Axum template dependencies
+axum = { version = "0.7", default-features = false }
+axum-macros = "0.4"
+console_error_panic_hook = "0.1.7"
+http = "1.0" # Make sure this is 1.0 or compatible
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tower-service = "0.3"
+wasm-bindgen = "0.2.92"
+worker = { version = "0.5.0", features = ["http", "axum"] }
+
+# IronShield PoW dependencies
+sha2 = "0.10"
+hex = "0.4"
+rand = { version = "0.8" }
+chrono = { version = "0.4", features = ["serde"] }
+getrandom = { version = "0.2", features = ["js"] }
+
+[profile.release]
+# Optimize for size in release builds
+lto = true
+strip = true
+opt-level = "z"
+codegen-units = 1
