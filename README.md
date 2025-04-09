@@ -38,6 +38,7 @@ Unlike previous solutions like PoW-Shield, which required running directly on yo
 - **High-Speed Rust Proxy:** Built for extreme throughput and minimal latency, ensuring protection doesn't degrade user experience.
 - **Adaptive Rate Limiting:** Intelligently allows legitimate traffic patterns while throttling malicious requests.
 - **Advanced Web Application Firewall (WAF):** Detects and blocks malicious patterns before they reach your application.
+- **SEO Bot Whitelisting & Verification:** Preserves search engine ranking by whitelisting known bots (e.g., Googlebot, Bingbot) and verifying their identity through reverse/forward DNS lookups to prevent User-Agent spoofing.
 - **Distributed & Scalable:** Deploy horizontally across multiple nodes and infrastructure seamlessly.
 - **Data Privacy:** Traffic stays securely within your infrastructure without routing through third-party services.
 - **Minimal Resource Footprint:** Uses significantly fewer resources than Node.js or Python-based solutions.
