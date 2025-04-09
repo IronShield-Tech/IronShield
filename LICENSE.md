@@ -14,7 +14,7 @@ TERMS
 
 The Licensor hereby grants you the right to copy, modify, create derivative works, redistribute, and make non-commercial use of the Licensed Work. This license does not grant you the right to use the Licensed Work for commercial purposes.
 
-You may not use the Licensed Work for commercial purposes without purchasing a commercial license. A commercial license can be obtained at https://ironshield.cloud.
+You may not use the Licensed Work for commercial purposes without purchasing a commercial license. A commercial license can be obtained at https://ironshield.cloud. If you are starting a business or cannot afford a commercial license, please contact us to discuss potential trial license options.
 
 If your use of the Licensed Work does not comply with the Use Limitation, your right to use the Licensed Work ends automatically.
 
