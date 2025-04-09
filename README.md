@@ -1,59 +1,87 @@
-# Ironshield
+# IronShield
 
-**Under a L7 DDoS attack? Sophisticated attackers spamming your API? If you need real protection but can't yet justify Cloudflare Enterprise prices, Ironshield is your defense.**
+## Enterprise-Level DDoS Protection at Startup-Friendly Prices
 
-## The Problem
+### What is IronShield?
 
-You've built something valuable, and now you're under attack:
+IronShield is a powerful, Rust-based Layer 7 (L7) DDoS and bot protection solution specifically built for APIs, crypto projects, Web3 platforms, self-hosted applications, and startups that demand enterprise-level security but lack enterprise-level budgets. Primarily designed as a solution to be effortlessly deployed on Cloudflare's infrastructure, IronShield provides robust protection without relying exclusively on Cloudflare's built-in bot detection mechanisms, ensuring compatibility with privacy-focused networks like Tor and VPNs, essential for cryptocurrency and privacy-first services.
 
-- Your API endpoints are hammered with thousands of requests per second
-- Sophisticated attackers bypass basic rate limiting
-- L7 DDoS attacks target your application logic, not just your bandwidth
-- Commercial solutions like Cloudflare Enterprise cost thousands monthly
-- **You have Cloudflare Enterprise-level problems but not Cloudflare Enterprise-level money**
-- Each minute of downtime costs you users and reputation
+IronShield delivers top-tier protection without the heavy costs associated with traditional enterprise solutions like Cloudflare Enterprise and provides a scalable infrastructure solution instead of the common janky self-rolled options currently prevalent.
 
-Meanwhile, existing open-source solutions are often:
-- Outdated or unmaintained (PoW-Shield maintainer can't maintain if he's in jail)
-- Written in inefficient languages that consume too many resources
-- Difficult to configure and deploy
-- Unable to handle modern attack vectors
+### The Problem
 
-## Enter Ironshield
+You've built an innovative, valuable service—but now you're under attack:
 
-Ironshield is a high-performance, Rust-based DDoS protection layer designed specifically for crypto projects, APIs, and self-hosted services that need professional-grade protection without enterprise costs.
+- Your APIs are overwhelmed by thousands of malicious requests per second.
+- Attackers easily bypass basic rate limiting and firewalls.
+- You're suffering from Layer 7 DDoS attacks targeting your application's logic, not just network bandwidth.
+- Cloudflare Enterprise protection is prohibitively expensive (often thousands per month).
+- Downtime directly costs your business users, revenue, and credibility.
 
-Built as a modern rewrite of the conceptual foundation laid by POW-Shield, Ironshield leverages Rust's speed, safety, and concurrency to provide DDoS protection that's orders of magnitude more efficient.
+Open-source alternatives often fall short:
+- Frequently outdated or abandoned.
+- Resource-intensive or poorly optimized.
+- Complex and burdensome to configure and deploy.
+- Ineffective against advanced, modern attack vectors.
+
+### Why IronShield?
+
+IronShield modernizes and drastically improves upon the conceptual foundation set by solutions like PoW-Shield, leveraging Rust’s unparalleled performance, memory safety, and concurrency to provide sophisticated DDoS protection that's faster, safer, and dramatically more efficient.
+
+Additionally, IronShield aims to be the "Vercel for Cloudflare"—providing a user-friendly, no-code, 1-click security solution. While Cloudflare offers powerful tools for technical users, IronShield bridges the gap, delivering streamlined, accessible cybersecurity to everyone.
+
+Unlike previous solutions like PoW-Shield, which required running directly on your server and only filtering traffic after it had already reached your infrastructure, IronShield is specifically designed to operate on the edge. This means malicious traffic is intercepted and blocked before it ever touches your backend, greatly reducing the risk and resource drain on your systems.
 
 ### Key Features
 
-- **Proof of Work Challenge**: Forces attackers to expend significant computational resources, making DDoS attacks economically impractical
-- **Blazing Fast Proxy**: Written in Rust for minimal overhead and maximum throughput
-- **Smart Rate Limiting**: Sophisticated algorithms that recognize and allow legitimate traffic patterns
-- **Advanced WAF Protection**: Detects and blocks common attack patterns before they reach your application
-- **Distributed Architecture**: Scales horizontally across your infrastructure
-- **Privacy Preserving**: Keeps your traffic on your infrastructure, not routed through third parties
-- **Low Resource Utilization**: Tiny memory footprint compared to Node.js-based alternatives
+- **Proof of Work (PoW) Challenges:** Forces attackers to consume significant CPU resources, making automated attacks economically unsustainable.
+- **High-Speed Rust Proxy:** Built for extreme throughput and minimal latency, ensuring protection doesn't degrade user experience.
+- **Adaptive Rate Limiting:** Intelligently allows legitimate traffic patterns while throttling malicious requests.
+- **Advanced Web Application Firewall (WAF):** Detects and blocks malicious patterns before they reach your application.
+- **Distributed & Scalable:** Deploy horizontally across multiple nodes and infrastructure seamlessly.
+- **Data Privacy:** Traffic stays securely within your infrastructure without routing through third-party services.
+- **Minimal Resource Footprint:** Uses significantly fewer resources than Node.js or Python-based solutions.
+- **AI Scraper Maze (Optional “AI Revenge Mode”):** Deploy decoy content designed specifically to confuse, poison, and frustrate AI-powered web scrapers and data crawlers.
 
-## Who Is This For?
+### Ideal for:
 
-- **Crypto exchanges & DeFi platforms** facing targeted attacks
-- **Web3 infrastructure providers** protecting critical APIs
-- **NFT projects** during high-demand mints
-- **Blockchain explorers** and similar high-value targets
-- **Privacy-focused services** that can't use centralized protection
-- **Self-hosted applications** requiring professional protection
-- **Small to medium businesses** with budget constraints
-- **Teams demanding full control** over their stack, free from proprietary cloud dependencies
+- **Crypto Exchanges & DeFi Platforms:** Protect sensitive APIs from targeted attacks without blocking privacy-focused traffic.
+- **Web3 Infrastructure Providers:** Guard critical API infrastructure with reliable security.
+- **NFT Projects:** Ensure stability during high-demand mint events.
+- **Blockchain Explorers:** Maintain uptime and data integrity under heavy load.
+- **Privacy-First Services:** Avoid reliance on third-party security services and maintain compatibility with Tor and VPN users.
+- **Self-Hosted Businesses:** Achieve enterprise-grade security on your own infrastructure.
+- **Small and Medium Businesses:** Gain access to powerful security without breaking the bank.
+- **Teams Demanding Full Stack Control:** Deploy and manage security independently, free from external dependencies.
 
-## How It Works
+### How IronShield Works
 
-Ironshield sits as a reverse proxy in front of your application:
+IronShield operates as a secure reverse proxy in front of your application:
 
-1. When a client makes a request, Ironshield issues a proof-of-work challenge
-2. The client's browser solves the computational puzzle via JavaScript
-3. Once verified, the client receives a time-limited token
-4. Subsequent requests with valid tokens are proxied to your application
-5. Malicious requests never reach your origin server
+1. **Client Request:** User requests access your application.
+2. **PoW Challenge:** IronShield issues a computational challenge executed via JavaScript or WebAssembly.
+3. **Verification:** The user's browser completes the computational puzzle, demonstrating genuine intent.
+4. **Token Generation:** Verified clients receive a time-limited access token.
+5. **Access Granted:** Requests with valid tokens seamlessly reach your application.
+6. **Malicious Requests Blocked:** Bots and attackers, unable to afford the computational overhead, are effectively blocked before hitting your server.
 
-The computational cost is negligible for legitimate users visiting your site normally, but prohibitively expensive for attackers attempting to generate thousands of requests per second.
+For legitimate users, the computational cost is imperceptible. However, for attackers, it imposes a severe penalty, making large-scale attacks financially and computationally impractical.
+
+### Future-Proof Your Security
+
+IronShield plans to support self-hosted Web Application Firewall (WAF) deployments, offering complete flexibility for organizations requiring additional control or regulatory compliance. 
+
+### Getting Started
+
+Deploy IronShield effortlessly via Cloudflare Workers or your own infrastructure:
+- Clone the IronShield repository.
+- Configure your security rules and PoW settings.
+- Deploy using Docker, Kubernetes, or directly via Cloudflare Workers.
+
+### Join the Revolution in Edge Security
+
+Stop compromising between security and cost-efficiency. Protect your platform with IronShield—enterprise-grade L7 DDoS protection designed specifically for your needs.
+
+---
+
+**IronShield: Built for Security. Optimized for Performance. Designed for Everyone.**
