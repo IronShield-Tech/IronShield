@@ -4,7 +4,7 @@
 
 ### What is IronShield?
 
-IronShield is a powerful, Rust-based Layer 7 (L7) DDoS and bot protection solution specifically built for APIs, crypto projects, Web3 platforms, self-hosted applications, and startups that demand enterprise-level security but lack enterprise-level budgets. Primarily designed as a solution to be effortlessly deployed on Cloudflare®'s infrastructure, IronShield provides robust protection without relying exclusively on Cloudflare®'s built-in bot detection mechanisms, ensuring compatibility with privacy-focused networks like Tor and VPNs, essential for cryptocurrency and privacy-first services.
+IronShield is a powerful, Rust-based Layer 7 (L7) DDoS and bot protection solution specifically built for APIs, crypto projects, Web3 platforms, self-hosted applications, and startups that demand enterprise-level security but lack enterprise-level budgets. This project originated from the need for effective DDoS protection that respects user privacy, as many traditional security solutions inadvertently block legitimate users accessing services via privacy tools like VPNs and Tor. Primarily designed as a solution to be effortlessly deployed on Cloudflare®'s infrastructure, IronShield provides robust protection without relying exclusively on Cloudflare®'s built-in bot detection mechanisms, ensuring compatibility with privacy-focused networks like Tor and VPNs, essential for cryptocurrency and privacy-first services.
 
 IronShield delivers top-tier protection without the heavy costs associated with traditional enterprise solutions like Cloudflare® Enterprise and provides a scalable infrastructure solution instead of the common janky self-rolled options currently prevalent.
 
