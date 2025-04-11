@@ -42,107 +42,126 @@
     </div>
 
     <script>
-        async function solveChallenge() {
-            // Template variables - these will be replaced by server
-            // TEMPLATE:challenge
-            const challenge = "CHALLENGE_PLACEHOLDER";
-            // TEMPLATE:timestamp
-            const timestamp = "TIMESTAMP_PLACEHOLDER";
-            
-            // Get difficulty from header instead of template replacement
-            // Read the difficulty from the response header that we navigated through
-            let difficulty = 4; // Default fallback value
-            
-            // Try to get difficulty from the header using meta tag
-            const difficultyMeta = document.querySelector('meta[name="x-ironshield-difficulty"]');
-            if (difficultyMeta) {
-                const difficultyStr = difficultyMeta.getAttribute('content');
-                const parsedDifficulty = parseInt(difficultyStr, 10);
-                if (!isNaN(parsedDifficulty) && parsedDifficulty > 0) {
-                    difficulty = parsedDifficulty;
-                    console.log(`Using difficulty from header: ${difficulty}`);
-                }
-            } else {
-                console.log(`Using default difficulty: ${difficulty}`);
-            }
-            
-            const targetPrefix = "0".repeat(difficulty);
+        // First, load the WebAssembly module and bindings
+        async function loadWasmModule() {
             const statusDiv = document.getElementById("status");
-            const progressBar = document.getElementById("progress");
-            statusDiv.textContent = "Solving challenge...";
-
-            let nonce = 0;
-            let hash = "";
-            let attempts = 0;
-            const maxAttempts = 1000000;
-            const startTime = Date.now();
-
-            while (nonce < maxAttempts) {
-                const dataToHash = `${challenge}:${nonce}`;
-                const encoder = new TextEncoder();
-                const data = encoder.encode(dataToHash);
-                const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-                if (hash.startsWith(targetPrefix)) {
-                    statusDiv.textContent = `Challenge solved! (Nonce: ${nonce}, Hash: ${hash.substring(0, 10)}...)`;
-                    progressBar.value = 100;
-                    
-                    fetch(window.location.href, {
-                        method: "GET",
-                        headers: {
-                            // TEMPLATE:challenge_header
-                            "X-Challenge": challenge,
-                            // TEMPLATE:nonce_header
-                            "X-Nonce": nonce.toString(),
-                            // TEMPLATE:timestamp_header
-                            "X-Timestamp": timestamp,
-                            // Add difficulty header to the verification request
-                            "X-IronShield-Difficulty": difficulty.toString()
-                        }
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            return response.text().then(html => {
-                                document.open();
-                                document.write(html);
-                                document.close();
-                            });
-                        } else {
-                            statusDiv.textContent = `Verification failed (Status: ${response.status}). Please try refreshing.`;
-                            progressBar.value = 0;
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error sending verification:", error);
-                        statusDiv.textContent = "Error sending verification. Please check console.";
-                        progressBar.value = 0;
-                    });
-                    return;
-                }
-
-                nonce++;
-                attempts++;
-
-                if (attempts % 1000 === 0) {
-                    if (Date.now() - startTime > 30000) {
-                        statusDiv.textContent = "Challenge timed out. Please refresh.";
-                        progressBar.value = 0;
-                        return;
-                    }
-                    progressBar.value = Math.min(99, (attempts / 50000) * 100);
-                    statusDiv.textContent = `Solving challenge... Attempt: ${attempts}`;
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                }
+            statusDiv.textContent = "Loading security module...";
+            
+            try {
+                // Import the JS bindings for the WebAssembly module
+                const wasmBindings = await import('/pow_wasm.js');
+                // Initialize the module
+                await wasmBindings.default();
+                
+                statusDiv.textContent = "Security module loaded, starting verification...";
+                return wasmBindings;
+            } catch (error) {
+                console.error("Failed to load WebAssembly module:", error);
+                statusDiv.textContent = "Error loading security module. Please refresh the page.";
+                throw error;
             }
-
-            statusDiv.textContent = "Could not solve the challenge within limits. Please refresh.";
-            progressBar.value = 0;
         }
 
-        // Start solving immediately
-        solveChallenge();
+        async function solveChallenge() {
+            // Get all parameters from meta tags
+            const difficultyMeta = document.querySelector('meta[name="x-ironshield-difficulty"]');
+            const timestampMeta = document.querySelector('meta[name="x-ironshield-timestamp"]');
+            const challengeMeta = document.querySelector('meta[name="x-ironshield-challenge"]');
+            
+            const statusDiv = document.getElementById("status");
+            const progressBar = document.getElementById("progress");
+            
+            // Error handling for missing meta tags
+            if (!difficultyMeta || !timestampMeta || !challengeMeta) {
+                statusDiv.textContent = "Error: Security parameters missing. Please refresh the page.";
+                progressBar.value = 0;
+                return;
+            }
+            
+            // Parse the values
+            const difficultyStr = difficultyMeta.getAttribute('content');
+            const difficulty = parseInt(difficultyStr, 10);
+            
+            if (isNaN(difficulty) || difficulty <= 0) {
+                statusDiv.textContent = "Error: Invalid security parameters. Please refresh the page.";
+                progressBar.value = 0;
+                return;
+            }
+            
+            const timestamp = timestampMeta.getAttribute('content');
+            const challenge = challengeMeta.getAttribute('content');
+            
+            if (!timestamp || !challenge) {
+                statusDiv.textContent = "Error: Missing security parameters. Please refresh the page.";
+                progressBar.value = 0;
+                return;
+            }
+            
+            console.log(`Using challenge: ${challenge}, difficulty: ${difficulty}, timestamp: ${timestamp}`);
+            
+            try {
+                // Load the WebAssembly module
+                const wasmModule = await loadWasmModule();
+                
+                // Update status
+                statusDiv.textContent = "Solving challenge...";
+                progressBar.value = 10;
+                
+                // Set up an update interval for the progress bar to show activity
+                const startTime = Date.now();
+                const progressInterval = setInterval(() => {
+                    const elapsedMs = Date.now() - startTime;
+                    // Slowly increment progress, max 95% (save 5% for completion)
+                    progressBar.value = Math.min(95, (elapsedMs / 10000) * 100);
+                }, 100);
+                
+                // Use the WASM module to solve the PoW challenge
+                const solution = await wasmModule.solve_pow_challenge(challenge, difficulty);
+                
+                // Clear the progress update interval
+                clearInterval(progressInterval);
+                
+                // Update UI
+                statusDiv.textContent = `Challenge solved! (Nonce: ${solution.nonce_str}, Hash: ${solution.hash_prefix}...)`;
+                progressBar.value = 100;
+                
+                // Send the solution back to the server
+                fetch(window.location.href, {
+                    method: "GET",
+                    headers: {
+                        "X-IronShield-Challenge": challenge,
+                        "X-IronShield-Nonce": solution.nonce_str,
+                        "X-IronShield-Timestamp": timestamp,
+                        "X-IronShield-Difficulty": difficultyStr
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text().then(html => {
+                            document.open();
+                            document.write(html);
+                            document.close();
+                        });
+                    } else {
+                        statusDiv.textContent = `Verification failed (Status: ${response.status}). Please try refreshing.`;
+                        progressBar.value = 0;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error sending verification:", error);
+                    statusDiv.textContent = "Error sending verification. Please check console.";
+                    progressBar.value = 0;
+                });
+                
+            } catch (error) {
+                console.error("Error during challenge:", error);
+                statusDiv.textContent = "Error during verification. Please refresh and try again.";
+                progressBar.value = 0;
+            }
+        }
+
+        // Start the challenge process when the page loads
+        document.addEventListener('DOMContentLoaded', solveChallenge);
     </script>
 </body>
 </html> 

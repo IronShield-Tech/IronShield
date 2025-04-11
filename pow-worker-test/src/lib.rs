@@ -20,7 +20,7 @@ const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
-const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty"; // New header for difficulty
+const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty";
 const MAX_CHALLENGE_AGE_SECONDS: i64 = 60; // How long a challenge is valid
 
 // Simple placeholder for successful access
@@ -32,15 +32,16 @@ async fn protected_content() -> &'static str {
 fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> Result<Response<body::Body>> {
     console_log!("Issuing WebAssembly challenge...");
 
-    // Create a meta tag for the difficulty to be read by client-side JavaScript
+    // Create meta tags for all parameters
     let difficulty_meta_tag = format!("<meta name=\"x-ironshield-difficulty\" content=\"{}\">", POW_DIFFICULTY);
+    let timestamp_meta_tag = format!("<meta name=\"x-ironshield-timestamp\" content=\"{}\">", timestamp.to_rfc3339());
+    let challenge_meta_tag = format!("<meta name=\"x-ironshield-challenge\" content=\"{}\">", challenge_string);
     
-    // Replace placeholders in the template, and add our difficulty meta tag after the viewport meta
+    // Replace placeholders in the template, and add our meta tags after the viewport meta
     let html_content = CHALLENGE_TEMPLATE
-        .replace("CHALLENGE_PLACEHOLDER", challenge_string)
-        .replace("TIMESTAMP_PLACEHOLDER", &timestamp.to_rfc3339())
         .replace("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
-                &format!("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    {}", difficulty_meta_tag))
+                &format!("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    {}\n    {}\n    {}", 
+                         difficulty_meta_tag, timestamp_meta_tag, challenge_meta_tag))
         // Keep these replacements for header names
         .replace("X-Challenge", CHALLENGE_HEADER)
         .replace("X-Nonce", NONCE_HEADER)
@@ -49,7 +50,9 @@ fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> 
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/html")
-        .header(DIFFICULTY_HEADER, POW_DIFFICULTY.to_string()) // Add difficulty header
+        .header(DIFFICULTY_HEADER, POW_DIFFICULTY.to_string())
+        .header(TIMESTAMP_HEADER, timestamp.to_rfc3339())
+        .header(CHALLENGE_HEADER, challenge_string)
         .body(body::Body::from(html_content))
         .map_err(|e| Error::RustError(format!("Failed to build challenge response: {}", e)))
 }
@@ -91,23 +94,17 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
                 }
             };
 
-            // 3. Verify nonce format
+            // 3. Verify solution using our Rust code (same as what's in the WASM module)
             match nonce_str.parse::<u64>() {
-                Ok(nonce) => {
-                    // 4. Recompute hash
-                    let data_to_hash = format!("{}:{}", challenge, nonce);
-                    let mut hasher = Sha256::new();
-                    hasher.update(data_to_hash.as_bytes());
-                    let hash_bytes = hasher.finalize();
-                    let hash_hex = hex::encode(hash_bytes);
-
-                    // 5. Check difficulty using the received difficulty
-                    let target_prefix = "0".repeat(difficulty);
-                    if hash_hex.starts_with(&target_prefix) {
-                        console_log!("Checksum verification successful (Hash: {}..., Difficulty: {}).", &hash_hex[..8], difficulty);
+                Ok(_) => {  // We don't need the parsed nonce here, just checking it's valid
+                    // Use the function from pow_client
+                    let result = pow_client::verify_pow_solution(challenge, nonce_str, difficulty);
+                    
+                    if result {
+                        console_log!("Checksum verification successful!");
                         true
                     } else {
-                        console_log!("Checksum verification failed (Hash: {}..., Difficulty: {}).", &hash_hex[..8], difficulty);
+                        console_log!("Checksum verification failed.");
                         false
                     }
                 }
