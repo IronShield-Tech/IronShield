@@ -128,6 +128,36 @@ IronShield operates as a secure reverse proxy in front of your application:
 
 For legitimate users, the computational cost is imperceptible. However, for attackers, it imposes a severe penalty, making large-scale attacks financially and computationally impractical.
 
+### The Economics of DDoS Protection
+
+To illustrate how IronShield creates an economic barrier against attacks, let's analyze a real-world scenario:
+
+**Scenario: Large-Scale DDoS Attack**
+- Attack volume: 100,000 requests per second (RPS)
+- PoW challenge: Each request requires 0.3 seconds of CPU time (Ironshield's black box bot detection would likely serve likly bots challenges that are harder and take 3-10s, but we'll assume a worst-case scenario where they spoof a legitimate browser perfectly)
+- Target: A service protected by IronShield
+
+**Computational Requirements for the Attacker:**
+- 100,000 RPS × 0.3 CPU-seconds = 30,000 CPU-core-seconds needed per second
+- This translates to 30,000 CPU cores running continuously
+
+**Financial Impact at Current AWS EC2 Pricing:**
+- Average compute-optimized instance cost: ~$0.042 per vCPU hour (AWS prices)
+- 30,000 CPU cores × $0.042 = $1,260 per hour
+- $1,260 × 24 hours = $30,240 per day
+
+Without IronShield, this attack would likely overwhelm your infrastructure, causing downtime or triggering massive auto-scaling costs. With IronShield, the economics are reversed - the attacker must spend over huge sums of money daily to maintain the attack, while your protected infrastructure handles legitimate traffic efficiently.
+
+**Advanced Scenario: Enhanced Bot Protection**
+For suspected bots and attackers, IronShield can dynamically increase challenge difficulty:
+- If challenges are increased to 11 seconds of CPU time per request:
+  - 100,000 RPS × 11 CPU-seconds = 1,100,000 CPU-core-seconds needed per second
+  - This requires 1,100,000 CPU cores running continuously
+  - 1,100,000 CPU cores × $0.042 = $46,200 per hour
+  - $46,200 × 24 hours = $1,108,800 per day (~$1.1 million daily)
+
+This demonstrates why PoW-based protection is so effective: it transforms a DDoS attack from a technical challenge into an economic one, where attackers must continuously pay substantially more than their targets. Meanwhile, legitimate users experience minimal latency (less than 0.3 seconds) for challenge completion.
+
 ### Future-Proof Your Security
 
 IronShield plans to support self-hosted Web Application Firewall (WAF) deployments, offering complete flexibility for organizations requiring additional control or regulatory compliance. 
