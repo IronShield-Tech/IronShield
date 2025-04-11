@@ -44,7 +44,7 @@ ab -n 100000 -c 1000 -H "Authorization: Bearer INVALID_TOKEN" -p payload.json -T
 DO NOT run this against systems you don't own or have permission to test.  
 Install Apache Benchmark if needed: `apt-get install apache2-utils`
 
-This command sends 100,000 requests with 1,000 concurrent connections. Even a well-resourced server can struggle under this load from a single machine. Imagine this distributed across hundreds of compromised devices in a botnet.
+This command sends 100,000 requests with 1,000 concurrent connections. Even a well-resourced server can struggle under this load from a single machine. Imagine this distributed across thousands of compromised devices in a botnet.
 
 This attack is even more devastating when:
 
