@@ -13,6 +13,7 @@ mod pow_client;
 // Make the WebAssembly binary and its JS bindings available to include
 const WASM_BINARY: &[u8] = include_bytes!("../wasm/pow_wasm_bg.wasm");
 const WASM_JS_BINDINGS: &[u8] = include_bytes!("../wasm/pow_wasm.js");
+const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html");
 
 // --- Constants ---
 const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
@@ -30,135 +31,14 @@ async fn protected_content() -> &'static str {
 fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> Result<Response<body::Body>> {
     console_log!("Issuing WebAssembly challenge...");
 
-    // Simple HTML with WebAssembly loader
-    // language=HTML
-    let html_content = format!(r#"
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <title>IronShield Challenge</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{ font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0; }}
-                .container {{ text-align: center; padding: 20px; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; width: 90%; }}
-                #status {{ margin-top: 15px; font-weight: bold; }}
-                progress {{ width: 100%; margin-top: 10px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h2>Security Check</h2>
-                <p>Please wait while we verify your connection. This may take a few seconds.</p>
-                <progress id="progress" max="100" value="0"></progress>
-                <div id="status">Initializing WebAssembly...</div>
-            </div>
-
-            <script type="module">
-                // Challenge parameters
-                const challenge = "{challenge}";
-                const timestamp = "{timestamp}";
-                const difficulty = {difficulty};
-                
-                const statusDiv = document.getElementById('status');
-                const progressBar = document.getElementById('progress');
-                
-                // Function to load and initialize the WebAssembly module
-                async function initWasm() {{
-                    try {{
-                        statusDiv.textContent = 'Loading WebAssembly module...';
-                        
-                        // Import the WebAssembly module using the JavaScript bindings
-                        const wasmModule = await import('/pow_wasm.js');
-                        
-                        // Initialize the module (this will fetch the .wasm file)
-                        await wasmModule.default();
-                        
-                        // Now we can use the exported functions
-                        statusDiv.textContent = 'Solving challenge...';
-                        
-                        // Track progress
-                        let progressInterval = setInterval(() => {{
-                            // Just a UI indicator since we can't track actual progress from Wasm
-                            const currentValue = progressBar.value;
-                            if (currentValue < 90) {{
-                                progressBar.value = currentValue + 1;
-                            }}
-                        }}, 200);
-                        
-                        // Start solving the challenge
-                        try {{
-                            const startTime = Date.now();
-                            
-                            // Call the Rust function via the JavaScript bindings
-                            const result = await wasmModule.solve_pow_challenge(challenge, difficulty);
-                            const duration = Date.now() - startTime;
-                            
-                            clearInterval(progressInterval);
-                            progressBar.value = 100;
-                            
-                            // Verify the solution with our Rust code
-                            const isValid = wasmModule.verify_pow_solution(challenge, result.nonce_str, difficulty);
-                            
-                            if (isValid) {{
-                                statusDiv.textContent = `Challenge solved! (Nonce: ${{result.nonce_str}}, Hash: ${{result.hash_prefix}}...)`;
-                                
-                                // Send the solution back via headers
-                                fetch(window.location.href, {{
-                                    method: 'GET',
-                                    headers: {{
-                                        '{challenge_header}': challenge,
-                                        '{nonce_header}': result.nonce_str,
-                                        '{timestamp_header}': timestamp
-                                    }}
-                                }})
-                                .then(response => {{
-                                    if (response.ok) {{
-                                        return response.text().then(html => {{
-                                            document.open();
-                                            document.write(html);
-                                            document.close();
-                                        }});
-                                    }} else {{
-                                        statusDiv.textContent = `Verification failed (Status: ${{response.status}}). Please try refreshing.`;
-                                        progressBar.value = 0;
-                                    }}
-                                }})
-                                .catch(error => {{
-                                    console.error('Error sending verification:', error);
-                                    statusDiv.textContent = 'Error sending verification. Please check console.';
-                                    progressBar.value = 0;
-                                }});
-                            }} else {{
-                                statusDiv.textContent = 'Invalid solution generated. Please refresh.';
-                                progressBar.value = 0;
-                            }}
-                        }} catch (error) {{
-                            clearInterval(progressInterval);
-                            console.error('Error solving challenge:', error);
-                            statusDiv.textContent = `Error solving challenge: ${{error.message}}`;
-                            progressBar.value = 0;
-                        }}
-                    }} catch (error) {{
-                        console.error('Error initializing WebAssembly:', error);
-                        statusDiv.textContent = `Failed to initialize WebAssembly: ${{error.message}}`;
-                        progressBar.value = 0;
-                    }}
-                }}
-                
-                // Start WebAssembly initialization
-                initWasm();
-            </script>
-        </body>
-        </html>
-        "#,
-        challenge = challenge_string,
-        timestamp = timestamp.to_rfc3339(),
-        difficulty = POW_DIFFICULTY,
-        challenge_header = CHALLENGE_HEADER,
-        nonce_header = NONCE_HEADER,
-        timestamp_header = TIMESTAMP_HEADER
-    );
+    // Replace placeholders in the template
+    let html_content = CHALLENGE_TEMPLATE
+        .replace("CHALLENGE_PLACEHOLDER", challenge_string)
+        .replace("TIMESTAMP_PLACEHOLDER", &timestamp.to_rfc3339())
+        .replace("4; // Default value, will be replaced", &POW_DIFFICULTY.to_string())
+        .replace("X-Challenge", CHALLENGE_HEADER)
+        .replace("X-Nonce", NONCE_HEADER)
+        .replace("X-Timestamp", TIMESTAMP_HEADER);
 
     Response::builder()
         .status(StatusCode::OK)
