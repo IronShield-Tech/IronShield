@@ -26,11 +26,13 @@ Open-source alternatives often fall short:
 
 ### Why IronShield?
 
-IronShield modernizes and drastically improves upon the conceptual foundation set by solutions like PoW-Shield, leveraging Rust's unparalleled performance, memory safety, and concurrency to provide sophisticated DDoS protection that's faster, safer, and dramatically more efficient.
+IronShield modernizes and drastically improves upon the conceptual foundation set by solutions like [PoW-Shield](https://github.com/RuiSiang/PoW-Shield.git), leveraging Rust and WASM performance, memory safety, and concurrency to provide sophisticated protection that's faster, safer, and dramatically more efficient.
 
 Additionally, IronShield aims to be the "Vercel for Cloudflare®"—providing a user-friendly, no-code, 1-click security solution. While Cloudflare® offers powerful tools for technical users, IronShield bridges the gap, delivering streamlined, accessible cybersecurity to everyone.
 
 Unlike previous solutions like PoW-Shield, which required running directly on your server and only filtering traffic after it had already reached your infrastructure, IronShield is specifically designed to operate on the edge. This means malicious traffic is intercepted and blocked before it ever touches your backend, greatly reducing the risk and resource drain on your systems.
+
+> **Note:** Ironically, PoW-Shield's need to run on your own server isn't even its biggest problem anymore. It's now unmaintained since [its really obvious drug kingpin maintainer was arrested for being a darknet drug kingpin](https://www.ice.gov/news/releases/incognito-market-owner-arrested-operating-one-largest-online-narcotics-marketplaces). In contrast, we can promise that our developers stick to coding, not running $100M dark web markets!
 
 ### WebAssembly Edge Advantage
 
