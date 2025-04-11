@@ -36,13 +36,14 @@ Unlike previous solutions like PoW-Shield, which required running directly on yo
 
 IronShield's innovative WebAssembly-powered security delivers unprecedented advantages:
 
-- **15x Faster Challenges:** Our Rust-to-WebAssembly compilation achieves proof-of-work challenges up to 15x faster than JavaScript-based alternatives.
-- **Near-Native Performance:** WebAssembly executes at near-native speed across all modern browsers, including headless and automation tools.
-- **Consistent Cross-Browser Security:** Unlike JavaScript implementations that perform differently across browsers, our WebAssembly solution ensures uniform security enforcement.
+- **15x Performance Improvement:** Our Rust-to-WebAssembly compilation dramatically outperforms JavaScript-based alternatives, completing proof-of-work challenges up to 15x faster.
+- **Consistent Cross-Browser Execution:** Unlike JavaScript implementations with variable performance across browsers, our WebAssembly solution ensures uniform security enforcement across all platforms.
+- **Precise Challenge Calibration:** The predictable, consistent performance allows for fine-tuned difficulty settings that work reliably across different devices and browsers.
+- **Browser-Agnostic Security:** Works consistently across all modern browsers, headless environments, and automation tools without degradation.
 - **Reduced User Friction:** Lightning-fast challenge completion (typically under 0.3 seconds) creates a seamless experience for legitimate users.
-- **Minimal Memory Footprint:** Our garbage-collector-free Rust implementation maintains predictable, low memory overhead compared to JavaScript-based alternatives.
+- **Predictable Resource Usage:** Our garbage-collector-free Rust implementation maintains consistent, low memory overhead with minimal performance variability.
 - **Edge-Optimized Code:** Purpose-built for deployment on Cloudflare® Workers and other edge computing platforms.
-- **Privacy Compatibility:** Works reliably with privacy tools like Tor and VPNs without degrading security.
+- **Privacy Compatibility:** Works reliably with privacy tools like Tor and VPNs without compromising security.
 
 ### Key Features
 
