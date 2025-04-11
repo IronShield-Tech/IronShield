@@ -1,6 +1,10 @@
 name = "pow-worker-test"
 main = "build/worker/shim.mjs"
 compatibility_date = "2025-04-09"
+compatibility_flags = ["nodejs_compat"]
 
 [build]
-command = "cargo install -q worker-build && worker-build --release"
+command = "node build.js && cargo install -q worker-build && worker-build --release"
+
+[site]
+bucket = "./assets"

@@ -1,3 +1,7 @@
 target
+build
+temp_wasm_build/
+wasm/*.wasm
+wasm/*.js
 node_modules
 .wrangler
