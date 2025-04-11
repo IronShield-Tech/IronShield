@@ -16,7 +16,7 @@ const WASM_JS_BINDINGS: &[u8] = include_bytes!("../wasm/pow_wasm.js");
 const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html");
 
 // --- Constants ---
-const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
+const POW_DIFFICULTY: usize = 5; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
@@ -128,6 +128,10 @@ async fn serve_wasm_file() -> Result<Response<body::Body>> {
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/wasm")
+        // Add cache control headers to help with caching
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
+        // Add CORS headers to ensure it can be loaded from different origins if needed
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .body(body::Body::from(WASM_BINARY.to_vec()))
         .map_err(|e| Error::RustError(format!("Failed to serve WebAssembly: {}", e)))
 }
@@ -139,6 +143,10 @@ async fn serve_wasm_js_file() -> Result<Response<body::Body>> {
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/javascript")
+        // Add cache control headers
+        .header(header::CACHE_CONTROL, "public, max-age=3600") 
+        // Add CORS headers
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .body(body::Body::from(WASM_JS_BINDINGS.to_vec()))
         .map_err(|e| Error::RustError(format!("Failed to serve WebAssembly JS bindings: {}", e)))
 }
@@ -158,9 +166,11 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
     // Handle request for WebAssembly files
     match req.uri().path() {
         "/pow_wasm_bg.wasm" => {
+            console_log!("Request for WebAssembly binary received. Size: {} bytes", WASM_BINARY.len());
             return serve_wasm_file().await;
         }
         "/pow_wasm.js" => {
+            console_log!("Request for WebAssembly JS bindings received. Size: {} bytes", WASM_JS_BINDINGS.len());
             return serve_wasm_js_file().await;
         }
         _ => {}

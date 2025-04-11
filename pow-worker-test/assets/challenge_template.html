@@ -43,21 +43,51 @@
 
     <script>
         // First, load the WebAssembly module and bindings
-        async function loadWasmModule() {
+        async function loadWasmModule(retryCount = 0) {
             const statusDiv = document.getElementById("status");
-            statusDiv.textContent = "Loading security module...";
+            const maxRetries = 3;
+            
+            statusDiv.textContent = retryCount > 0 
+                ? `Loading security module... (Attempt ${retryCount + 1}/${maxRetries + 1})` 
+                : "Loading security module...";
             
             try {
                 // Import the JS bindings for the WebAssembly module
+                console.log("Requesting WebAssembly JS bindings...");
                 const wasmBindings = await import('/pow_wasm.js');
+                console.log("JS bindings loaded, initializing module...");
+                
                 // Initialize the module
                 await wasmBindings.default();
                 
+                console.log("WebAssembly module initialized successfully");
                 statusDiv.textContent = "Security module loaded, starting verification...";
                 return wasmBindings;
             } catch (error) {
                 console.error("Failed to load WebAssembly module:", error);
-                statusDiv.textContent = "Error loading security module. Please refresh the page.";
+                
+                // Implement retry logic
+                if (retryCount < maxRetries) {
+                    statusDiv.textContent = `Retrying module load (${retryCount + 1}/${maxRetries})...`;
+                    console.log(`Retrying WASM module load, attempt ${retryCount + 1}/${maxRetries}`);
+                    
+                    // Wait a bit before retrying (exponential backoff)
+                    const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return loadWasmModule(retryCount + 1);
+                }
+                
+                // If we've exhausted retries, show detailed error
+                let errorMessage = "Error loading security module.";
+                if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+                    errorMessage += " Network error - please check your connection.";
+                } else if (error.message.includes("compile")) {
+                    errorMessage += " Browser could not compile the security module.";
+                } else {
+                    errorMessage += " " + error.message;
+                }
+                
+                statusDiv.textContent = errorMessage + " Please refresh the page.";
                 throw error;
             }
         }

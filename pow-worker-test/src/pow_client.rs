@@ -32,7 +32,7 @@ pub fn solve_pow_challenge(challenge: &str, difficulty: usize) -> Result<JsValue
 
 // Internal function to find a solution
 fn find_solution(challenge: &str, target_prefix: &str) -> Result<(u64, String), String> {
-    let max_attempts = 1_000_000; // Safety limit
+    let max_attempts = 10000000;
     
     for nonce in 0..max_attempts {
         let data_to_hash = format!("{}:{}", challenge, nonce);
