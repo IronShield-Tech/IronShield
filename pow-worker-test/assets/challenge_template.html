@@ -48,8 +48,23 @@
             const challenge = "CHALLENGE_PLACEHOLDER";
             // TEMPLATE:timestamp
             const timestamp = "TIMESTAMP_PLACEHOLDER";
-            // TEMPLATE:difficulty
-            const difficulty = 4; // Default value, will be replaced
+            
+            // Get difficulty from header instead of template replacement
+            // Read the difficulty from the response header that we navigated through
+            let difficulty = 4; // Default fallback value
+            
+            // Try to get difficulty from the header using meta tag
+            const difficultyMeta = document.querySelector('meta[name="x-ironshield-difficulty"]');
+            if (difficultyMeta) {
+                const difficultyStr = difficultyMeta.getAttribute('content');
+                const parsedDifficulty = parseInt(difficultyStr, 10);
+                if (!isNaN(parsedDifficulty) && parsedDifficulty > 0) {
+                    difficulty = parsedDifficulty;
+                    console.log(`Using difficulty from header: ${difficulty}`);
+                }
+            } else {
+                console.log(`Using default difficulty: ${difficulty}`);
+            }
             
             const targetPrefix = "0".repeat(difficulty);
             const statusDiv = document.getElementById("status");
@@ -82,7 +97,9 @@
                             // TEMPLATE:nonce_header
                             "X-Nonce": nonce.toString(),
                             // TEMPLATE:timestamp_header
-                            "X-Timestamp": timestamp
+                            "X-Timestamp": timestamp,
+                            // Add difficulty header to the verification request
+                            "X-IronShield-Difficulty": difficulty.toString()
                         }
                     })
                     .then(response => {

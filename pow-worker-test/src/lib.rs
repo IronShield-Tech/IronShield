@@ -20,6 +20,7 @@ const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
+const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty"; // New header for difficulty
 const MAX_CHALLENGE_AGE_SECONDS: i64 = 60; // How long a challenge is valid
 
 // Simple placeholder for successful access
@@ -31,11 +32,16 @@ async fn protected_content() -> &'static str {
 fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> Result<Response<body::Body>> {
     console_log!("Issuing WebAssembly challenge...");
 
-    // Replace placeholders in the template
+    // Create a meta tag for the difficulty to be read by client-side JavaScript
+    let difficulty_meta_tag = format!("<meta name=\"x-ironshield-difficulty\" content=\"{}\">", POW_DIFFICULTY);
+    
+    // Replace placeholders in the template, and add our difficulty meta tag after the viewport meta
     let html_content = CHALLENGE_TEMPLATE
         .replace("CHALLENGE_PLACEHOLDER", challenge_string)
         .replace("TIMESTAMP_PLACEHOLDER", &timestamp.to_rfc3339())
-        .replace("4; // Default value, will be replaced", &POW_DIFFICULTY.to_string())
+        .replace("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
+                &format!("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    {}", difficulty_meta_tag))
+        // Keep these replacements for header names
         .replace("X-Challenge", CHALLENGE_HEADER)
         .replace("X-Nonce", NONCE_HEADER)
         .replace("X-Timestamp", TIMESTAMP_HEADER);
@@ -43,6 +49,7 @@ fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> 
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/html")
+        .header(DIFFICULTY_HEADER, POW_DIFFICULTY.to_string()) // Add difficulty header
         .body(body::Body::from(html_content))
         .map_err(|e| Error::RustError(format!("Failed to build challenge response: {}", e)))
 }
@@ -55,9 +62,10 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
     let challenge_opt = headers.get(CHALLENGE_HEADER).and_then(|v| v.to_str().ok());
     let nonce_opt = headers.get(NONCE_HEADER).and_then(|v| v.to_str().ok());
     let timestamp_opt = headers.get(TIMESTAMP_HEADER).and_then(|v| v.to_str().ok());
+    let difficulty_opt = headers.get(DIFFICULTY_HEADER).and_then(|v| v.to_str().ok());
 
-    match (challenge_opt, nonce_opt, timestamp_opt) {
-        (Some(challenge), Some(nonce_str), Some(timestamp_str)) => {
+    match (challenge_opt, nonce_opt, timestamp_opt, difficulty_opt) {
+        (Some(challenge), Some(nonce_str), Some(timestamp_str), Some(difficulty_str)) => {
             // 1. Verify timestamp freshness
             match DateTime::parse_from_rfc3339(timestamp_str) {
                  Ok(timestamp_with_offset) => {
@@ -74,23 +82,32 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
                  }
             }
 
-            // 2. Verify nonce format
+            // 2. Parse difficulty
+            let difficulty = match difficulty_str.parse::<usize>() {
+                Ok(d) => d,
+                Err(_) => {
+                    console_log!("Invalid difficulty format.");
+                    return false;
+                }
+            };
+
+            // 3. Verify nonce format
             match nonce_str.parse::<u64>() {
                 Ok(nonce) => {
-                    // 3. Recompute hash
+                    // 4. Recompute hash
                     let data_to_hash = format!("{}:{}", challenge, nonce);
                     let mut hasher = Sha256::new();
                     hasher.update(data_to_hash.as_bytes());
                     let hash_bytes = hasher.finalize();
                     let hash_hex = hex::encode(hash_bytes);
 
-                    // 4. Check difficulty
-                    let target_prefix = "0".repeat(POW_DIFFICULTY);
+                    // 5. Check difficulty using the received difficulty
+                    let target_prefix = "0".repeat(difficulty);
                     if hash_hex.starts_with(&target_prefix) {
-                        console_log!("Checksum verification successful (Hash: {}...).", &hash_hex[..8]);
+                        console_log!("Checksum verification successful (Hash: {}..., Difficulty: {}).", &hash_hex[..8], difficulty);
                         true
                     } else {
-                        console_log!("Checksum verification failed (Hash: {}...).", &hash_hex[..8]);
+                        console_log!("Checksum verification failed (Hash: {}..., Difficulty: {}).", &hash_hex[..8], difficulty);
                         false
                     }
                 }
@@ -138,7 +155,8 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
     let headers = req.headers();
     let has_pow_headers = headers.contains_key(CHALLENGE_HEADER)
         && headers.contains_key(NONCE_HEADER)
-        && headers.contains_key(TIMESTAMP_HEADER);
+        && headers.contains_key(TIMESTAMP_HEADER)
+        && headers.contains_key(DIFFICULTY_HEADER);
 
     // Handle request for WebAssembly files
     match req.uri().path() {
