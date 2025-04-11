@@ -24,6 +24,40 @@ Open-source alternatives often fall short:
 - Complex and burdensome to configure and deploy.
 - Ineffective against advanced, modern attack vectors.
 
+### The Hidden API Vulnerability
+
+Most engineers don't realize that even when an API properly rejects unauthorized requests, the server still burns significant CPU and memory resources authenticating each request before rejecting it. This creates a devastating vulnerability:
+
+Even though API requests will be rejected with 401/403 errors, the server must still:
+1. Process each connection
+2. Parse headers/JSON payload
+3. Run authentication logic
+4. Generate and send a response
+
+Below is a simple but devastating command to flood an API endpoint. This single line can generate enough traffic to bring down many servers:
+
+```bash
+ab -n 100000 -c 1000 -H "Authorization: Bearer INVALID_TOKEN" -p payload.json -T application/json https://api.example.com/endpoint/
+```
+
+⚠️ **WARNING: FOR EDUCATIONAL PURPOSES ONLY** ⚠️  
+DO NOT run this against systems you don't own or have permission to test.  
+Install Apache Benchmark if needed: `apt-get install apache2-utils`
+
+This command sends 100,000 requests with 1,000 concurrent connections. Even a well-resourced server can struggle under this load from a single machine. Imagine this distributed across hundreds of compromised devices in a botnet.
+
+This attack is even more devastating when:
+
+1. **Distributed across thousands of IPs** - making IP-based rate limiting ineffective
+2. **Targeting authentication endpoints** - which typically require expensive DB lookups and password hashing
+3. **Executed from a botnet** - amplifying the attack by orders of magnitude
+
+Traditional solutions like API keys, rate limiting, or WAFs merely reduce the impact but don't eliminate it—the server still must process each request to determine its legitimacy. 
+
+Even if you're using cloud providers like AWS, Google Cloud, or Azure with auto-scaling capabilities, you're still vulnerable in a different way: **your bill**. A sustained DDoS attack can trigger massive auto-scaling, resulting in thousands or tens of thousands of dollars in unexpected infrastructure costs before you can respond.
+
+IronShield's approach is fundamentally different: it creates a computational barrier that prevents attackers high volumes of request from reaching the protected servers in the first place.
+
 ### Why IronShield?
 
 IronShield modernizes and drastically improves upon the conceptual foundation set by solutions like [PoW-Shield](https://github.com/RuiSiang/PoW-Shield.git), leveraging Rust and WASM performance, memory safety, and concurrency to provide sophisticated protection that's faster, safer, and dramatically more efficient.
