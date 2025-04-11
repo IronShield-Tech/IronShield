@@ -32,6 +32,18 @@ Additionally, IronShield aims to be the "Vercel for Cloudflare®"—providing a 
 
 Unlike previous solutions like PoW-Shield, which required running directly on your server and only filtering traffic after it had already reached your infrastructure, IronShield is specifically designed to operate on the edge. This means malicious traffic is intercepted and blocked before it ever touches your backend, greatly reducing the risk and resource drain on your systems.
 
+### WebAssembly Edge Advantage
+
+IronShield's innovative WebAssembly-powered security delivers unprecedented advantages:
+
+- **15x Faster Challenges:** Our Rust-to-WebAssembly compilation achieves proof-of-work challenges up to 15x faster than JavaScript-based alternatives.
+- **Near-Native Performance:** WebAssembly executes at near-native speed across all modern browsers, including headless and automation tools.
+- **Consistent Cross-Browser Security:** Unlike JavaScript implementations that perform differently across browsers, our WebAssembly solution ensures uniform security enforcement.
+- **Reduced User Friction:** Lightning-fast challenge completion (typically under 0.3 seconds) creates a seamless experience for legitimate users.
+- **Minimal Memory Footprint:** Our garbage-collector-free Rust implementation maintains predictable, low memory overhead compared to JavaScript-based alternatives.
+- **Edge-Optimized Code:** Purpose-built for deployment on Cloudflare® Workers and other edge computing platforms.
+- **Privacy Compatibility:** Works reliably with privacy tools like Tor and VPNs without degrading security.
+
 ### Key Features
 
 - **Proof of Work (PoW) Challenges:** Forces attackers to consume significant CPU resources, making automated attacks economically unsustainable.
@@ -43,6 +55,17 @@ Unlike previous solutions like PoW-Shield, which required running directly on yo
 - **Data Privacy:** Traffic stays securely within your infrastructure without routing through third-party services.
 - **Minimal Resource Footprint:** Uses significantly fewer resources than Node.js or Python-based solutions.
 - **AI Scraper Maze (Optional "AI Revenge Mode"):** Deploy decoy content designed specifically to confuse, poison, and frustrate AI-powered web scrapers and data crawlers.
+
+### The Rust Advantage
+
+IronShield's use of Rust delivers distinct benefits over JavaScript or Python-based security tools:
+
+- **No Garbage Collection Pauses:** During critical security verification, JavaScript's unpredictable garbage collection can introduce timing vulnerabilities. Rust's deterministic memory management eliminates these pauses entirely.
+- **Predictable Security Performance:** Cryptographic verification times remain consistent regardless of system load, preventing timing-based exploits.
+- **Memory Safety Without Overhead:** Rust's ownership model prevents memory vulnerabilities without the performance penalties of managed runtimes.
+- **WebAssembly Integration:** Rust compiles seamlessly to WebAssembly, enabling identical cryptographic logic on both server and client.
+- **Concurrent Processing:** Efficient parallel hash computations without thread synchronization overhead.
+
 
 ### Ideal for:
 
