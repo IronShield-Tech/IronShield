@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>IronShield Challenge</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        progress {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Security Check</h2>
+        <p>Please wait while we verify your connection. This may take a few seconds.</p>
+        <progress id="progress" max="100" value="0"></progress>
+        <div id="status">Initializing...</div>
+    </div>
+
+    <script>
+        async function solveChallenge() {
+            // Template variables - these will be replaced by server
+            // TEMPLATE:challenge
+            const challenge = "CHALLENGE_PLACEHOLDER";
+            // TEMPLATE:timestamp
+            const timestamp = "TIMESTAMP_PLACEHOLDER";
+            // TEMPLATE:difficulty
+            const difficulty = 4; // Default value, will be replaced
+            
+            const targetPrefix = "0".repeat(difficulty);
+            const statusDiv = document.getElementById("status");
+            const progressBar = document.getElementById("progress");
+            statusDiv.textContent = "Solving challenge...";
+
+            let nonce = 0;
+            let hash = "";
+            let attempts = 0;
+            const maxAttempts = 1000000;
+            const startTime = Date.now();
+
+            while (nonce < maxAttempts) {
+                const dataToHash = `${challenge}:${nonce}`;
+                const encoder = new TextEncoder();
+                const data = encoder.encode(dataToHash);
+                const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+                if (hash.startsWith(targetPrefix)) {
+                    statusDiv.textContent = `Challenge solved! (Nonce: ${nonce}, Hash: ${hash.substring(0, 10)}...)`;
+                    progressBar.value = 100;
+                    
+                    fetch(window.location.href, {
+                        method: "GET",
+                        headers: {
+                            // TEMPLATE:challenge_header
+                            "X-Challenge": challenge,
+                            // TEMPLATE:nonce_header
+                            "X-Nonce": nonce.toString(),
+                            // TEMPLATE:timestamp_header
+                            "X-Timestamp": timestamp
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            return response.text().then(html => {
+                                document.open();
+                                document.write(html);
+                                document.close();
+                            });
+                        } else {
+                            statusDiv.textContent = `Verification failed (Status: ${response.status}). Please try refreshing.`;
+                            progressBar.value = 0;
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error sending verification:", error);
+                        statusDiv.textContent = "Error sending verification. Please check console.";
+                        progressBar.value = 0;
+                    });
+                    return;
+                }
+
+                nonce++;
+                attempts++;
+
+                if (attempts % 1000 === 0) {
+                    if (Date.now() - startTime > 30000) {
+                        statusDiv.textContent = "Challenge timed out. Please refresh.";
+                        progressBar.value = 0;
+                        return;
+                    }
+                    progressBar.value = Math.min(99, (attempts / 50000) * 100);
+                    statusDiv.textContent = `Solving challenge... Attempt: ${attempts}`;
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+
+            statusDiv.textContent = "Could not solve the challenge within limits. Please refresh.";
+            progressBar.value = 0;
+        }
+
+        // Start solving immediately
+        solveChallenge();
+    </script>
+</body>
+</html> 
