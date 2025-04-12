@@ -145,8 +145,350 @@
                     progressBar.value = Math.min(95, (elapsedMs / 10000) * 100);
                 }, 100);
                 
-                // Use the WASM module to solve the PoW challenge
-                const solution = await wasmModule.solve_pow_challenge(challenge, difficulty);
+                // Define timeout (in seconds)
+                const timeoutSeconds = 30;
+                
+                // Get the base URL and other necessary URLs
+                const baseUrl = window.location.origin;
+                
+                let solution;
+                
+                // Check if Web Workers are supported
+                if (window.Worker) {
+                    console.log("Using Web Workers for background PoW calculation");
+                    
+                    // Run the PoW calculation in multiple background Workers to utilize all CPU cores
+                    solution = await new Promise((resolve, reject) => {
+                        try {
+                            // Determine the number of CPU cores (logical processors)
+                            const numCores = navigator.hardwareConcurrency || 4; // Default to 4 if not available
+                            console.log(`Detected ${numCores} CPU cores, launching ${numCores} workers`);
+                            
+                            // Create a simple worker script that doesn't try to use ES modules
+                            const workerScript = `
+                                // Simple worker that receives challenge data and performs calculation
+                                self.onmessage = async function(e) {
+                                    try {
+                                        // Get challenge data
+                                        const { challenge, difficulty, workerId, startNonce, nonceStep } = e.data;
+                                        console.log("Worker #" + workerId + " received challenge, difficulty:", difficulty);
+                                        
+                                        // We'll calculate the PoW without WebAssembly for reliability
+                                        // This is a pure JavaScript implementation of the PoW algorithm
+                                        console.log("Worker #" + workerId + " starting calculation from nonce " + startNonce + " with step " + nonceStep);
+                                        const startTime = performance.now();
+                                        
+                                        // Send a message back to indicate we're starting the hashing
+                                        if (workerId === 0) {
+                                            self.postMessage({
+                                                type: "hashingStarted"
+                                            });
+                                        }
+                                        
+                                        const solution = await calculatePowSolution(challenge, difficulty, workerId, startNonce, nonceStep);
+                                        
+                                        const endTime = performance.now();
+                                        console.log("Worker #" + workerId + " found solution in " + (endTime - startTime).toFixed(2) + "ms");
+                                        
+                                        // Send the result back to the main thread
+                                        self.postMessage({
+                                            type: "success",
+                                            solution: solution,
+                                            timeTaken: endTime - startTime,
+                                            workerId: workerId
+                                        });
+                                    } catch (error) {
+                                        console.error("Worker #" + e.data.workerId + " error:", error);
+                                        self.postMessage({
+                                            type: "error",
+                                            message: error.message || "Unknown error",
+                                            workerId: e.data.workerId
+                                        });
+                                    }
+                                };
+
+                                // Pure JavaScript implementation of the PoW algorithm
+                                // Modified to use a specific starting nonce and step value for parallel execution
+                                async function calculatePowSolution(challenge, difficulty, workerId, startNonce, nonceStep) {
+                                    const targetPrefix = "0".repeat(difficulty);
+                                    let nonce = startNonce;
+                                    let hash = "";
+                                    let attempts = 0;
+                                    let lastReportedAttempts = 0;
+                                    
+                                    while (true) {
+                                        // Create the data to hash: challenge:nonce
+                                        const dataToHash = challenge + ":" + nonce;
+                                        
+                                        // Calculate SHA-256 hash using the Web Crypto API
+                                        const encoder = new TextEncoder();
+                                        const data = encoder.encode(dataToHash);
+                                        
+                                        // Just do a single hash - multiple hashes were causing the process to hang
+                                        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                                        
+                                        // Convert to hex string
+                                        const hashArray = Array.from(new Uint8Array(hashBuffer));
+                                        hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                                        
+                                        // Check if the hash meets the difficulty requirement
+                                        if (hash.startsWith(targetPrefix)) {
+                                            // Found a solution!
+                                            // Send final progress report before returning
+                                            self.postMessage({
+                                                type: "finalProgress",
+                                                attempts: attempts,
+                                                workerId: workerId
+                                            });
+                                            
+                                            return {
+                                                nonce_str: nonce.toString(),
+                                                hash: hash,
+                                                hash_prefix: hash.substring(0, 10),
+                                                attempts: attempts
+                                            };
+                                        }
+                                        
+                                        // Move to next nonce according to our step pattern (allows parallel execution)
+                                        nonce += nonceStep;
+                                        attempts++;
+                                        
+                                        // Yield to prevent blocking the thread completely
+                                        if (attempts % 1000 === 0) {
+                                            // Report actual attempts, not just a signal
+                                            self.postMessage({
+                                                type: "progress",
+                                                attempts: attempts - lastReportedAttempts, // Report only new attempts since last time
+                                                totalAttempts: attempts,
+                                                nonce: nonce,
+                                                workerId: workerId
+                                            });
+                                            lastReportedAttempts = attempts;
+                                            
+                                            // Brief yield to allow message processing
+                                            await new Promise(resolve => setTimeout(resolve, 0));
+                                        }
+                                        
+                                        // Safety limit - each worker checks a different range
+                                        if (attempts > 1000000) {
+                                            throw new Error("Worker #" + workerId + " could not find solution within attempt limit");
+                                        }
+                                    }
+                                }
+                            `;
+                            
+                            // Create the worker from the script
+                            const blob = new Blob([workerScript], { type: 'application/javascript' });
+                            const workerUrl = URL.createObjectURL(blob);
+                            
+                            // Create an array to hold all our workers
+                            const workers = [];
+                            
+                            // Track if we've found a solution
+                            let solutionFound = false;
+                            
+                            // Create a promise that will be rejected if all workers fail
+                            let failedWorkers = 0;
+                            
+                            // Track total attempts across all workers
+                            let totalAttempts = 0;
+                            let lastUIUpdate = Date.now();
+                            
+                            // Track per-worker stats
+                            const workerStats = Array(numCores).fill(0);
+                            const startTimestamp = Date.now();
+                            
+                            // Create and start multiple workers
+                            for (let i = 0; i < numCores; i++) {
+                                const worker = new Worker(workerUrl);
+                                workers.push(worker);
+                                
+                                // Handle messages from each worker
+                                worker.onmessage = function(e) {
+                                    if (e.data.type === "success") {
+                                        if (!solutionFound) {
+                                            const elapsedSeconds = ((Date.now() - startTimestamp) / 1000).toFixed(2);
+                                            const hashRate = Math.round(totalAttempts / (Date.now() - startTimestamp) * 1000);
+                                            
+                                            console.log(`Solution found by worker #${e.data.workerId} in ${elapsedSeconds}s:`, e.data.solution);
+                                            console.log(`Total attempts: ${totalAttempts.toLocaleString()} (${hashRate.toLocaleString()} hashes/sec)`);
+                                            console.log(`Per-worker attempts: ${workerStats.map(a => a.toLocaleString()).join(', ')}`);
+                                            
+                                            solutionFound = true;
+                                            
+                                            // Update UI with final stats
+                                            statusDiv.textContent = `Computing hash values... (${totalAttempts.toLocaleString()} attempts, ${hashRate.toLocaleString()} hashes/sec)`;
+                                            
+                                            // Terminate all workers
+                                            workers.forEach(w => w.terminate());
+                                            
+                                            // Clean up the URL
+                                            URL.revokeObjectURL(workerUrl);
+                                            
+                                            // Log total attempts that were needed
+                                            console.log(`Total attempts across all workers: ${totalAttempts.toLocaleString()}`);
+                                            
+                                            // Resolve the promise with the solution
+                                            resolve(e.data.solution);
+                                        }
+                                    } else if (e.data.type === "error") {
+                                        console.error(`Worker #${e.data.workerId} error:`, e.data.message);
+                                        failedWorkers++;
+                                        
+                                        // If all workers have failed, reject with an error
+                                        if (failedWorkers >= numCores) {
+                                            workers.forEach(w => w.terminate());
+                                            URL.revokeObjectURL(workerUrl);
+                                            reject(new Error("All workers failed to find a solution"));
+                                        }
+                                    } else if (e.data.type === "progress") {
+                                        // Add these attempts to our total count - use the exact number reported
+                                        totalAttempts += e.data.attempts;
+                                        
+                                        // Update per-worker stats
+                                        workerStats[e.data.workerId] = e.data.totalAttempts;
+                                        
+                                        // Calculate hash rate
+                                        const elapsedMs = Date.now() - startTimestamp;
+                                        if (elapsedMs > 0) {
+                                            const hashRate = Math.round(totalAttempts / elapsedMs * 1000);
+                                            
+                                            // Update UI with total attempts and rate, but limit updates to avoid UI thrashing
+                                            const now = Date.now();
+                                            if (now - lastUIUpdate > 100) { // Update UI at most every 100ms
+                                                statusDiv.textContent = `Computing hash values... (${totalAttempts.toLocaleString()} total attempts, ${hashRate.toLocaleString()} hashes/sec)`;
+                                                lastUIUpdate = now;
+                                            }
+                                        }
+                                    } else if (e.data.type === "finalProgress") {
+                                        // Update final count from the worker that found the solution
+                                        workerStats[e.data.workerId] = e.data.attempts;
+                                        console.log(`Worker #${e.data.workerId} final attempt count: ${e.data.attempts.toLocaleString()}`);
+                                    } else if (e.data.type === "hashingStarted" && e.data.workerId === 0) {
+                                        // Update UI to show hashing has started
+                                        statusDiv.textContent = "Computing hash values (using all available CPU cores)...";
+                                        progressBar.value = 25;
+                                    }
+                                };
+                                
+                                // Handle errors
+                                worker.onerror = function(e) {
+                                    console.error(`Worker #${i} error:`, e);
+                                    failedWorkers++;
+                                    
+                                    // If all workers have failed, reject with an error
+                                    if (failedWorkers >= numCores) {
+                                        workers.forEach(w => w.terminate());
+                                        URL.revokeObjectURL(workerUrl);
+                                        reject(new Error("All workers failed to find a solution"));
+                                    }
+                                };
+                                
+                                // Start each worker with a different nonce range
+                                // Worker 0 checks nonces 0, numCores, 2*numCores, ...
+                                // Worker 1 checks nonces 1, numCores+1, 2*numCores+1, ...
+                                // And so on, ensuring no overlap and full CPU utilization
+                                worker.postMessage({
+                                    challenge: challenge,
+                                    difficulty: difficulty,
+                                    workerId: i,
+                                    startNonce: i,
+                                    nonceStep: numCores
+                                });
+                            }
+                            
+                            // Set up a timeout to terminate all workers if they take too long
+                            setTimeout(() => {
+                                if (!solutionFound) {
+                                    workers.forEach(w => w.terminate());
+                                    URL.revokeObjectURL(workerUrl);
+                                    reject(new Error("Timeout: PoW calculation took too long"));
+                                }
+                            }, timeoutSeconds * 1000);
+                            
+                        } catch (error) {
+                            reject(error);
+                        }
+                    });
+                } else {
+                    // Fallback for browsers that don't support Web Workers
+                    console.log("Web Workers not supported - using main thread");
+                    statusDiv.textContent = "Executing security verification (single-threaded)...";
+                    
+                    try {
+                        // Implement the same pure JavaScript solution for consistency
+                        const solveStartTime = performance.now();
+                        
+                        // Function for calculating PoW solution in pure JavaScript
+                        async function calculatePowSolution(challenge, difficulty) {
+                            const targetPrefix = "0".repeat(difficulty);
+                            let nonce = 0;
+                            let hash = "";
+                            let attempts = 0;
+                            
+                            // Update UI when hashing starts
+                            statusDiv.textContent = "Computing hash values...";
+                            progressBar.value = 25;
+                            
+                            while (true) {
+                                // Create the data to hash: challenge:nonce
+                                const dataToHash = challenge + ":" + nonce;
+                                
+                                // Calculate SHA-256 hash using the Web Crypto API
+                                const encoder = new TextEncoder();
+                                const data = encoder.encode(dataToHash);
+                                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                                
+                                // Convert to hex string
+                                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                                hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                                
+                                // Check if the hash meets the difficulty requirement
+                                if (hash.startsWith(targetPrefix)) {
+                                    // Found a solution!
+                                    return {
+                                        nonce_str: nonce.toString(),
+                                        hash: hash,
+                                        hash_prefix: hash.substring(0, 10)
+                                    };
+                                }
+                                
+                                nonce++;
+                                attempts++;
+                                
+                                // Occasionally update UI to show progress
+                                if (attempts % 5000 === 0) {
+                                    // Update status with attempt count
+                                    statusDiv.textContent = `Verifying... (${attempts.toLocaleString()} attempts)`;
+                                    // Brief yield to prevent UI freeze
+                                    await new Promise(resolve => setTimeout(resolve, 0));
+                                }
+                                
+                                // Safety limit
+                                if (attempts > 1000000) {
+                                    throw new Error("Could not find solution within attempt limit");
+                                }
+                            }
+                        }
+                        
+                        // Call the implementation with a timeout
+                        const timeoutPromise = new Promise((_, reject) => {
+                            setTimeout(() => reject(new Error("Timeout")), timeoutSeconds * 1000);
+                        });
+                        
+                        // Race the calculation against the timeout
+                        solution = await Promise.race([
+                            calculatePowSolution(challenge, difficulty),
+                            timeoutPromise
+                        ]);
+                        
+                        const solveEndTime = performance.now();
+                        console.log(`PoW solution found in ${(solveEndTime - solveStartTime).toFixed(2)}ms (main thread)`);
+                    } catch (error) {
+                        console.error("Main thread execution error:", error);
+                        throw new Error(`Failed to execute challenge on main thread: ${error.message}`);
+                    }
+                }
                 
                 // Clear the progress update interval
                 clearInterval(progressInterval);

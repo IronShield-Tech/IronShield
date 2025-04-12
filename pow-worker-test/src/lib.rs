@@ -16,7 +16,7 @@ const WASM_JS_BINDINGS: &[u8] = include_bytes!("../wasm/pow_wasm.js");
 const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html");
 
 // --- Constants ---
-const POW_DIFFICULTY: usize = 5; // Number of leading zeros required in the hash
+const POW_DIFFICULTY: usize = 3; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
