@@ -14,6 +14,7 @@ mod pow_client;
 const WASM_BINARY: &[u8] = include_bytes!("../wasm/pow_wasm_bg.wasm");
 const WASM_JS_BINDINGS: &[u8] = include_bytes!("../wasm/pow_wasm.js");
 const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html");
+const CHALLENGE_CSS: &str = include_str!("../assets/challenge.css");
 
 // --- Constants ---
 const POW_DIFFICULTY: usize = 3; // Number of leading zeros required in the hash
@@ -151,6 +152,19 @@ async fn serve_wasm_js_file() -> Result<Response<body::Body>> {
         .map_err(|e| Error::RustError(format!("Failed to serve WebAssembly JS bindings: {}", e)))
 }
 
+// Function to serve the challenge CSS file
+async fn serve_challenge_css() -> Result<Response<body::Body>> {
+    console_log!("Serving challenge CSS...");
+    
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/css")
+        // Add cache control headers
+        .header(header::CACHE_CONTROL, "public, max-age=3600") 
+        .body(body::Body::from(CHALLENGE_CSS))
+        .map_err(|e| Error::RustError(format!("Failed to serve challenge CSS: {}", e)))
+}
+
 // Main Worker entry point
 #[event(fetch)]
 pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) -> Result<Response<body::Body>> {
@@ -172,6 +186,10 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
         "/pow_wasm.js" => {
             console_log!("Request for WebAssembly JS bindings received. Size: {} bytes", WASM_JS_BINDINGS.len());
             return serve_wasm_js_file().await;
+        }
+        "/challenge.css" => {
+            console_log!("Request for challenge CSS received.");
+            return serve_challenge_css().await;
         }
         _ => {}
     }
