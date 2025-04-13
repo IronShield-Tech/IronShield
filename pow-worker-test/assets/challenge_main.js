@@ -1,11 +1,13 @@
 import { UIManager } from './ui_manager.js';
 import { WorkerPoolManager } from './worker_pool_manager.js';
+import { ApiClient } from './api_client.js';
 
 // First, load the WebAssembly module and bindings
 // async function loadWasmModule(retryCount = 0) { ... }
 
 async function solveChallenge() {
     const uiManager = new UIManager();
+    const apiClient = new ApiClient();
 
     // Get all parameters from meta tags
     const difficultyMeta = document.querySelector('meta[name="x-ironshield-difficulty"]');
@@ -95,33 +97,23 @@ async function solveChallenge() {
         uiManager.setStatus(`Challenge solved! (Nonce: ${solution.nonce_str}, Hash: ${solution.hash_prefix}...)`);
         uiManager.setProgress(100);
         
-        // Send the solution back to the server
-        fetch(window.location.href, {
-            method: "GET",
-            headers: {
-                "X-IronShield-Challenge": challenge,
-                "X-IronShield-Nonce": solution.nonce_str,
-                "X-IronShield-Timestamp": timestamp,
-                "X-IronShield-Difficulty": difficultyStr
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                return response.text().then(html => {
-                    document.open();
-                    document.write(html);
-                    document.close();
-                });
-            } else {
-                // Use uiManager for error reporting
-                uiManager.showError(`Verification failed (Status: ${response.status}). Please try refreshing.`);
-            }
-        })
-        .catch(error => {
-            console.error("Error sending verification:", error);
-            // Use uiManager for error reporting
-            uiManager.showError("Error sending verification. Please check console.");
-        });
+        // Send the solution back to the server using ApiClient
+        try {
+            const responseHtml = await apiClient.submitSolution(
+                challenge,
+                solution.nonce_str,
+                timestamp,
+                difficultyStr
+            );
+            // Render the response from the server
+            document.open();
+            document.write(responseHtml);
+            document.close();
+        } catch (error) {
+            // ApiClient throws an error if fetch fails or status is not ok
+            console.error("Error submitting solution via ApiClient:", error);
+            uiManager.showError(error.message || "Error submitting verification. Please check console.");
+        }
         
     } catch (error) {
         console.error("Error solving challenge:", error);

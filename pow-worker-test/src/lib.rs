@@ -16,6 +16,9 @@ const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html
 const CHALLENGE_CSS: &str = include_str!("../assets/challenge.css");
 const POW_WORKER_JS: &str = include_str!("../assets/pow_worker.js");
 const CHALLENGE_MAIN_JS: &str = include_str!("../assets/challenge_main.js");
+const UI_MANAGER_JS: &str = include_str!("../assets/ui_manager.js");
+const WORKER_POOL_MANAGER_JS: &str = include_str!("../assets/worker_pool_manager.js");
+const API_CLIENT_JS: &str = include_str!("../assets/api_client.js");
 
 // --- Constants ---
 const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
@@ -185,15 +188,33 @@ async fn serve_pow_worker_js() -> Result<Response<body::Body>> {
 
 // Function to serve the main challenge JavaScript file
 async fn serve_challenge_main_js() -> Result<Response<body::Body>> {
-    console_log!("Serving main challenge JS...");
-    
+    serve_javascript_file("main challenge JS", CHALLENGE_MAIN_JS)
+}
+
+// Function to serve the UI Manager JavaScript file
+async fn serve_ui_manager_js() -> Result<Response<body::Body>> {
+    serve_javascript_file("UI manager JS", UI_MANAGER_JS)
+}
+
+// Function to serve the Worker Pool Manager JavaScript file
+async fn serve_worker_pool_manager_js() -> Result<Response<body::Body>> {
+    serve_javascript_file("Worker pool manager JS", WORKER_POOL_MANAGER_JS)
+}
+
+// Function to serve the API Client JavaScript file
+async fn serve_api_client_js() -> Result<Response<body::Body>> {
+    serve_javascript_file("API client JS", API_CLIENT_JS)
+}
+
+// Generic function to serve JavaScript files
+fn serve_javascript_file(log_name: &str, content: &'static str) -> Result<Response<body::Body>> {
+    console_log!("Serving {}...", log_name);
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/javascript")
-        // Add cache control headers
-        .header(header::CACHE_CONTROL, "public, max-age=3600") 
-        .body(body::Body::from(CHALLENGE_MAIN_JS))
-        .map_err(|e| Error::RustError(format!("Failed to serve main challenge JS: {}", e)))
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
+        .body(body::Body::from(content))
+        .map_err(|e| Error::RustError(format!("Failed to serve {}: {}", log_name, e)))
 }
 
 // Main Worker entry point
@@ -202,26 +223,19 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
     // Optionally set panic hook for better error messages in browser console
     utils::set_panic_hook();
 
-    let headers = req.headers();
-    let has_pow_headers = headers.contains_key(CHALLENGE_HEADER)
-        && headers.contains_key(NONCE_HEADER)
-        && headers.contains_key(TIMESTAMP_HEADER)
-        && headers.contains_key(DIFFICULTY_HEADER);
-
-    // Handle request for WebAssembly files
+    // Handle request for assets first
     match req.uri().path() {
-        "/pow_wasm_bg.wasm" => {
-            console_log!("Request for WebAssembly binary received. Size: {} bytes", WASM_BINARY.len());
-            return serve_wasm_file().await;
-        }
-        "/pow_wasm.js" => {
-            console_log!("Request for WebAssembly JS bindings received. Size: {} bytes", WASM_JS_BINDINGS.len());
-            return serve_wasm_js_file().await;
-        }
+        // WASM files (if still needed, keep them)
+        // "/pow_wasm_bg.wasm" => { ... }
+        // "/pow_wasm.js" => { ... }
+        
+        // CSS
         "/challenge.css" => {
             console_log!("Request for challenge CSS received.");
             return serve_challenge_css().await;
         }
+        
+        // JavaScript files
         "/pow_worker.js" => {
             console_log!("Request for PoW worker JS received.");
             return serve_pow_worker_js().await;
@@ -230,8 +244,28 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
             console_log!("Request for main challenge JS received.");
             return serve_challenge_main_js().await;
         }
+        "/ui_manager.js" => {
+            console_log!("Request for UI manager JS received.");
+            return serve_ui_manager_js().await;
+        }
+        "/worker_pool_manager.js" => {
+            console_log!("Request for Worker pool manager JS received.");
+            return serve_worker_pool_manager_js().await;
+        }
+        "/api_client.js" => {
+            console_log!("Request for API client JS received.");
+            return serve_api_client_js().await;
+        }
+        // Fall through if not an asset request
         _ => {}
     }
+
+    // Existing logic for handling GET requests (challenge/verification)
+    let headers = req.headers();
+    let has_pow_headers = headers.contains_key(CHALLENGE_HEADER)
+        && headers.contains_key(NONCE_HEADER)
+        && headers.contains_key(TIMESTAMP_HEADER)
+        && headers.contains_key(DIFFICULTY_HEADER);
 
     match *req.method() {
         AxumMethod::GET => {
