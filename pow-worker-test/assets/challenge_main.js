@@ -1,19 +1,19 @@
+import { UIManager } from './ui_manager.js';
+
 // First, load the WebAssembly module and bindings
 // async function loadWasmModule(retryCount = 0) { ... }
 
 async function solveChallenge() {
+    const uiManager = new UIManager();
+
     // Get all parameters from meta tags
     const difficultyMeta = document.querySelector('meta[name="x-ironshield-difficulty"]');
     const timestampMeta = document.querySelector('meta[name="x-ironshield-timestamp"]');
     const challengeMeta = document.querySelector('meta[name="x-ironshield-challenge"]');
     
-    const statusDiv = document.getElementById("status");
-    const progressBar = document.getElementById("progress");
-    
     // Error handling for missing meta tags
     if (!difficultyMeta || !timestampMeta || !challengeMeta) {
-        statusDiv.textContent = "Error: Security parameters missing. Please refresh the page.";
-        progressBar.value = 0;
+        uiManager.showError("Error: Security parameters missing. Please refresh the page.");
         return;
     }
     
@@ -22,8 +22,7 @@ async function solveChallenge() {
     const difficulty = parseInt(difficultyStr, 10);
     
     if (isNaN(difficulty) || difficulty <= 0) {
-        statusDiv.textContent = "Error: Invalid security parameters. Please refresh the page.";
-        progressBar.value = 0;
+        uiManager.showError("Error: Invalid security parameters. Please refresh the page.");
         return;
     }
     
@@ -31,28 +30,27 @@ async function solveChallenge() {
     const challenge = challengeMeta.getAttribute('content');
     
     if (!timestamp || !challenge) {
-        statusDiv.textContent = "Error: Missing security parameters. Please refresh the page.";
-        progressBar.value = 0;
+        uiManager.showError("Error: Missing security parameters. Please refresh the page.");
         return;
     }
     
     console.log(`Using challenge: ${challenge}, difficulty: ${difficulty}, timestamp: ${timestamp}`);
     
     // Update status - no need to load WASM anymore
-    statusDiv.textContent = "Preparing challenge solver...";
-    progressBar.value = 5; // Small initial progress
+    uiManager.setStatus("Preparing challenge solver...");
+    uiManager.setProgress(5); // Small initial progress
 
     try {
         // Update status
-        statusDiv.textContent = "Solving challenge...";
-        progressBar.value = 10;
+        uiManager.setStatus("Solving challenge...");
+        uiManager.setProgress(10);
         
         // Set up an update interval for the progress bar to show activity
         const startTime = Date.now();
         const progressInterval = setInterval(() => {
             const elapsedMs = Date.now() - startTime;
             // Slowly increment progress, max 95% (save 5% for completion)
-            progressBar.value = Math.min(95, (elapsedMs / 10000) * 100);
+            uiManager.setProgress(Math.min(95, (elapsedMs / 10000) * 100));
         }, 100);
         
         // Define timeout (in seconds)
@@ -92,8 +90,8 @@ async function solveChallenge() {
                     const startTimestamp = Date.now();
                     
                     // Update status to show hashing has started immediately
-                    statusDiv.textContent = "Computing hash values (using all available CPU cores)...";
-                    progressBar.value = 25;
+                    uiManager.setStatus("Computing hash values (using all available CPU cores)...");
+                    uiManager.setProgress(25);
                     
                     // Create and start multiple workers
                     for (let i = 0; i < numCores; i++) {
@@ -116,8 +114,8 @@ async function solveChallenge() {
                                     
                                     solutionFound = true;
                                     
-                                    // Update UI with final stats
-                                    statusDiv.textContent = `Computing hash values... (${totalAttempts.toLocaleString()} attempts, ${hashRate.toLocaleString()} hashes/sec)`;
+                                    // Update UI with final stats using uiManager
+                                    uiManager.setStatus(`Computing hash values... (${totalAttempts.toLocaleString()} attempts, ${hashRate.toLocaleString()} hashes/sec)`);
                                     
                                     // Terminate all workers
                                     workers.forEach(w => w.terminate());
@@ -153,7 +151,8 @@ async function solveChallenge() {
                                     // Update UI with total attempts and rate, but limit updates to avoid UI thrashing
                                     const now = Date.now();
                                     if (now - lastUIUpdate > 100) { // Update UI at most every 100ms
-                                        statusDiv.textContent = `Computing hash values... (${totalAttempts.toLocaleString()} total attempts, ${hashRate.toLocaleString()} hashes/sec)`;
+                                        // Use uiManager to update status
+                                        uiManager.setStatus(`Computing hash values... (${totalAttempts.toLocaleString()} total attempts, ${hashRate.toLocaleString()} hashes/sec)`);
                                         lastUIUpdate = now;
                                     }
                                 }
@@ -207,24 +206,25 @@ async function solveChallenge() {
         } else {
             // Fallback for browsers without Web Workers
             console.warn("Web Workers not supported. Falling back to main thread calculation (may block UI).");
-            statusDiv.textContent = "Solving challenge on main thread (may cause temporary freeze)...";
-            progressBar.value = 10;
+            // Use uiManager for error messages
+            uiManager.setStatus("Solving challenge on main thread (may cause temporary freeze)...");
+            uiManager.setProgress(10);
             
             // Perform the calculation directly in the main thread (not recommended)
             // Ensure the standalone calculatePowSolution exists or is imported/defined here
             // For now, let's just log a warning and stop, as the worker logic is primary
             // solution = await calculatePowSolution_mainThread(challenge, difficulty); // You would need this function
             console.error("Main thread fallback calculation not implemented yet.");
-            statusDiv.textContent = "Error: Web Workers required for this security check.";
+            uiManager.showError("Error: Web Workers required for this security check.");
             throw new Error("Web Workers are not supported or enabled in this browser.");
         }
         
         // Clear the progress update interval
         clearInterval(progressInterval);
         
-        // Update UI
-        statusDiv.textContent = `Challenge solved! (Nonce: ${solution.nonce_str}, Hash: ${solution.hash_prefix}...)`;
-        progressBar.value = 100;
+        // Update UI using uiManager
+        uiManager.setStatus(`Challenge solved! (Nonce: ${solution.nonce_str}, Hash: ${solution.hash_prefix}...)`);
+        uiManager.setProgress(100);
         
         // Send the solution back to the server
         fetch(window.location.href, {
@@ -244,20 +244,20 @@ async function solveChallenge() {
                     document.close();
                 });
             } else {
-                statusDiv.textContent = `Verification failed (Status: ${response.status}). Please try refreshing.`;
-                progressBar.value = 0;
+                // Use uiManager for error reporting
+                uiManager.showError(`Verification failed (Status: ${response.status}). Please try refreshing.`);
             }
         })
         .catch(error => {
             console.error("Error sending verification:", error);
-            statusDiv.textContent = "Error sending verification. Please check console.";
-            progressBar.value = 0;
+            // Use uiManager for error reporting
+            uiManager.showError("Error sending verification. Please check console.");
         });
         
     } catch (error) {
         console.error("Error solving challenge:", error);
-        statusDiv.textContent = "Error during security check: " + error.message;
-        progressBar.value = 0;
+        // Use uiManager for error reporting
+        uiManager.showError("Error during security check: " + error.message);
         
         // Clear interval in case of error
         // Find the interval variable if it's declared elsewhere or adjust scope
