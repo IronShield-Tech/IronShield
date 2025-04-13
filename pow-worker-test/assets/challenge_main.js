@@ -1,52 +1,5 @@
 // First, load the WebAssembly module and bindings
-async function loadWasmModule(retryCount = 0) {
-    const statusDiv = document.getElementById("status");
-    const maxRetries = 3;
-    
-    statusDiv.textContent = retryCount > 0 
-        ? `Loading security module... (Attempt ${retryCount + 1}/${maxRetries + 1})` 
-        : "Loading security module...";
-    
-    try {
-        // Import the JS bindings for the WebAssembly module
-        console.log("Requesting WebAssembly JS bindings...");
-        const wasmBindings = await import('/pow_wasm.js');
-        console.log("JS bindings loaded, initializing module...");
-        
-        // Initialize the module
-        await wasmBindings.default();
-        
-        console.log("WebAssembly module initialized successfully");
-        statusDiv.textContent = "Security module loaded, starting verification...";
-        return wasmBindings;
-    } catch (error) {
-        console.error("Failed to load WebAssembly module:", error);
-        
-        // Implement retry logic
-        if (retryCount < maxRetries) {
-            statusDiv.textContent = `Retrying module load (${retryCount + 1}/${maxRetries})...`;
-            console.log(`Retrying WASM module load, attempt ${retryCount + 1}/${maxRetries}`);
-            
-            // Wait a bit before retrying (exponential backoff)
-            const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return loadWasmModule(retryCount + 1);
-        }
-        
-        // If we've exhausted retries, show detailed error
-        let errorMessage = "Error loading security module.";
-        if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-            errorMessage += " Network error - please check your connection.";
-        } else if (error.message.includes("compile")) {
-            errorMessage += " Browser could not compile the security module.";
-        } else {
-            errorMessage += " " + error.message;
-        }
-        
-        statusDiv.textContent = errorMessage + " Please refresh the page.";
-        throw error;
-    }
-}
+// async function loadWasmModule(retryCount = 0) { ... }
 
 async function solveChallenge() {
     // Get all parameters from meta tags
@@ -85,10 +38,11 @@ async function solveChallenge() {
     
     console.log(`Using challenge: ${challenge}, difficulty: ${difficulty}, timestamp: ${timestamp}`);
     
+    // Update status - no need to load WASM anymore
+    statusDiv.textContent = "Preparing challenge solver...";
+    progressBar.value = 5; // Small initial progress
+
     try {
-        // Load the WebAssembly module
-        const wasmModule = await loadWasmModule();
-        
         // Update status
         statusDiv.textContent = "Solving challenge...";
         progressBar.value = 10;
@@ -136,6 +90,10 @@ async function solveChallenge() {
                     // Track per-worker stats
                     const workerStats = Array(numCores).fill(0);
                     const startTimestamp = Date.now();
+                    
+                    // Update status to show hashing has started immediately
+                    statusDiv.textContent = "Computing hash values (using all available CPU cores)...";
+                    progressBar.value = 25;
                     
                     // Create and start multiple workers
                     for (let i = 0; i < numCores; i++) {
@@ -203,10 +161,6 @@ async function solveChallenge() {
                                 // Update final count from the worker that found the solution
                                 workerStats[e.data.workerId] = e.data.attempts;
                                 console.log(`Worker #${e.data.workerId} final attempt count: ${e.data.attempts.toLocaleString()}`);
-                            } else if (e.data.type === "hashingStarted" && e.data.workerId === 0) {
-                                // Update UI to show hashing has started
-                                statusDiv.textContent = "Computing hash values (using all available CPU cores)...";
-                                progressBar.value = 25;
                             }
                         };
                         
@@ -251,83 +205,18 @@ async function solveChallenge() {
                 }
             });
         } else {
-            // Fallback for browsers that don't support Web Workers
-            console.log("Web Workers not supported - using main thread");
-            statusDiv.textContent = "Executing security verification (single-threaded)...";
+            // Fallback for browsers without Web Workers
+            console.warn("Web Workers not supported. Falling back to main thread calculation (may block UI).");
+            statusDiv.textContent = "Solving challenge on main thread (may cause temporary freeze)...";
+            progressBar.value = 10;
             
-            try {
-                // Implement the same pure JavaScript solution for consistency
-                const solveStartTime = performance.now();
-                
-                // Function for calculating PoW solution in pure JavaScript
-                async function calculatePowSolution(challenge, difficulty) {
-                    const targetPrefix = "0".repeat(difficulty);
-                    let nonce = 0;
-                    let hash = "";
-                    let attempts = 0;
-                    
-                    // Update UI when hashing starts
-                    statusDiv.textContent = "Computing hash values...";
-                    progressBar.value = 25;
-                    
-                    while (true) {
-                        // Create the data to hash: challenge:nonce
-                        const dataToHash = challenge + ":" + nonce;
-                        
-                        // Calculate SHA-256 hash using the Web Crypto API
-                        const encoder = new TextEncoder();
-                        const data = encoder.encode(dataToHash);
-                        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                        
-                        // Convert to hex string
-                        const hashArray = Array.from(new Uint8Array(hashBuffer));
-                        hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                        
-                        // Check if the hash meets the difficulty requirement
-                        if (hash.startsWith(targetPrefix)) {
-                            // Found a solution!
-                            return {
-                                nonce_str: nonce.toString(),
-                                hash: hash,
-                                hash_prefix: hash.substring(0, 10)
-                            };
-                        }
-                        
-                        nonce++;
-                        attempts++;
-                        
-                        // Occasionally update UI to show progress
-                        if (attempts % 5000 === 0) {
-                            // Update status with attempt count
-                            statusDiv.textContent = `Verifying... (${attempts.toLocaleString()} attempts)`;
-                            // Brief yield to prevent UI freeze
-                            await new Promise(resolve => setTimeout(resolve, 0));
-                        }
-                        
-                        // Safety limit
-                        if (attempts > 1000000) {
-                            throw new Error("Could not find solution within attempt limit");
-                        }
-                    }
-                }
-                
-                // Call the implementation with a timeout
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error("Timeout")), timeoutSeconds * 1000);
-                });
-                
-                // Race the calculation against the timeout
-                solution = await Promise.race([
-                    calculatePowSolution(challenge, difficulty),
-                    timeoutPromise
-                ]);
-                
-                const solveEndTime = performance.now();
-                console.log(`PoW solution found in ${(solveEndTime - solveStartTime).toFixed(2)}ms (main thread)`);
-            } catch (error) {
-                console.error("Main thread execution error:", error);
-                throw new Error(`Failed to execute challenge on main thread: ${error.message}`);
-            }
+            // Perform the calculation directly in the main thread (not recommended)
+            // Ensure the standalone calculatePowSolution exists or is imported/defined here
+            // For now, let's just log a warning and stop, as the worker logic is primary
+            // solution = await calculatePowSolution_mainThread(challenge, difficulty); // You would need this function
+            console.error("Main thread fallback calculation not implemented yet.");
+            statusDiv.textContent = "Error: Web Workers required for this security check.";
+            throw new Error("Web Workers are not supported or enabled in this browser.");
         }
         
         // Clear the progress update interval
@@ -366,11 +255,15 @@ async function solveChallenge() {
         });
         
     } catch (error) {
-        console.error("Error during challenge:", error);
-        statusDiv.textContent = "Error during verification. Please refresh and try again.";
+        console.error("Error solving challenge:", error);
+        statusDiv.textContent = "Error during security check: " + error.message;
         progressBar.value = 0;
+        
+        // Clear interval in case of error
+        // Find the interval variable if it's declared elsewhere or adjust scope
+        // clearInterval(progressInterval); // Make sure progressInterval is accessible here if needed
     }
 }
 
-// Start the challenge process when the page loads
+// Start the challenge solving process automatically
 document.addEventListener('DOMContentLoaded', solveChallenge); 

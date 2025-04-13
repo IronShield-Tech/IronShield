@@ -4,7 +4,7 @@ use axum::{
 };
 use worker::*;
 use hex;
-use chrono::{Utc, Duration, DateTime};
+use chrono::Utc;
 
 // Include the WebAssembly client module
 mod pow_client;
