@@ -3,7 +3,6 @@ use axum::{
     http::{Request, Response, StatusCode, header, Method as AxumMethod},
 };
 use worker::*;
-use sha2::{Sha256, Digest};
 use hex;
 use chrono::{Utc, Duration, DateTime};
 
@@ -15,9 +14,11 @@ const WASM_BINARY: &[u8] = include_bytes!("../wasm/pow_wasm_bg.wasm");
 const WASM_JS_BINDINGS: &[u8] = include_bytes!("../wasm/pow_wasm.js");
 const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html");
 const CHALLENGE_CSS: &str = include_str!("../assets/challenge.css");
+const POW_WORKER_JS: &str = include_str!("../assets/pow_worker.js");
+const CHALLENGE_MAIN_JS: &str = include_str!("../assets/challenge_main.js");
 
 // --- Constants ---
-const POW_DIFFICULTY: usize = 3; // Number of leading zeros required in the hash
+const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
@@ -30,12 +31,12 @@ async fn protected_content() -> &'static str {
 }
 
 // Function to generate the challenge page that uses WebAssembly
-fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> Result<Response<body::Body>> {
-    console_log!("Issuing WebAssembly challenge...");
+fn generate_challenge_page(challenge_string: &str, timestamp: i64) -> Result<Response<body::Body>> {
+    console_log!("Issuing WebAssembly challenge with timestamp: {}", timestamp);
 
     // Create meta tags for all parameters
     let difficulty_meta_tag = format!("<meta name=\"x-ironshield-difficulty\" content=\"{}\">", POW_DIFFICULTY);
-    let timestamp_meta_tag = format!("<meta name=\"x-ironshield-timestamp\" content=\"{}\">", timestamp.to_rfc3339());
+    let timestamp_meta_tag = format!("<meta name=\"x-ironshield-timestamp\" content=\"{}\">", timestamp);
     let challenge_meta_tag = format!("<meta name=\"x-ironshield-challenge\" content=\"{}\">", challenge_string);
     
     // Replace placeholders in the template, and add our meta tags after the viewport meta
@@ -52,7 +53,7 @@ fn generate_challenge_page(challenge_string: &str, timestamp: DateTime<Utc>) -> 
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/html")
         .header(DIFFICULTY_HEADER, POW_DIFFICULTY.to_string())
-        .header(TIMESTAMP_HEADER, timestamp.to_rfc3339())
+        .header(TIMESTAMP_HEADER, timestamp.to_string())
         .header(CHALLENGE_HEADER, challenge_string)
         .body(body::Body::from(html_content))
         .map_err(|e| Error::RustError(format!("Failed to build challenge response: {}", e)))
@@ -71,17 +72,21 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
     match (challenge_opt, nonce_opt, timestamp_opt, difficulty_opt) {
         (Some(challenge), Some(nonce_str), Some(timestamp_str), Some(difficulty_str)) => {
             // 1. Verify timestamp freshness
-            match DateTime::parse_from_rfc3339(timestamp_str) {
-                 Ok(timestamp_with_offset) => {
-                    let timestamp_utc = timestamp_with_offset.with_timezone(&Utc);
-                    let now = Utc::now();
-                    if now.signed_duration_since(timestamp_utc) > Duration::seconds(MAX_CHALLENGE_AGE_SECONDS) {
-                        console_log!("Challenge timestamp expired.");
+            match timestamp_str.parse::<i64>() {
+                 Ok(timestamp_millis) => {
+                    let now_millis = Utc::now().timestamp_millis();
+                    if now_millis.saturating_sub(timestamp_millis) > MAX_CHALLENGE_AGE_SECONDS * 1000 {
+                        console_log!("Challenge timestamp expired. Now: {}, Provided: {}", now_millis, timestamp_millis);
                         return false;
                     }
+                    // Optionally check if timestamp is too far in the future as well?
+                    // if timestamp_millis > now_millis + 5000 { // e.g., 5 seconds tolerance
+                    //     console_log!("Challenge timestamp is in the future.");
+                    //     return false;
+                    // }
                  }
                  Err(_) => {
-                    console_log!("Invalid timestamp format.");
+                    console_log!("Invalid timestamp format (expected Unix ms). Received: {}", timestamp_str);
                     return false;
                  }
             }
@@ -165,6 +170,32 @@ async fn serve_challenge_css() -> Result<Response<body::Body>> {
         .map_err(|e| Error::RustError(format!("Failed to serve challenge CSS: {}", e)))
 }
 
+// Function to serve the PoW worker JavaScript file
+async fn serve_pow_worker_js() -> Result<Response<body::Body>> {
+    console_log!("Serving PoW worker JS...");
+    
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/javascript")
+        // Add cache control headers
+        .header(header::CACHE_CONTROL, "public, max-age=3600") 
+        .body(body::Body::from(POW_WORKER_JS))
+        .map_err(|e| Error::RustError(format!("Failed to serve PoW worker JS: {}", e)))
+}
+
+// Function to serve the main challenge JavaScript file
+async fn serve_challenge_main_js() -> Result<Response<body::Body>> {
+    console_log!("Serving main challenge JS...");
+    
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/javascript")
+        // Add cache control headers
+        .header(header::CACHE_CONTROL, "public, max-age=3600") 
+        .body(body::Body::from(CHALLENGE_MAIN_JS))
+        .map_err(|e| Error::RustError(format!("Failed to serve main challenge JS: {}", e)))
+}
+
 // Main Worker entry point
 #[event(fetch)]
 pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) -> Result<Response<body::Body>> {
@@ -190,6 +221,14 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
         "/challenge.css" => {
             console_log!("Request for challenge CSS received.");
             return serve_challenge_css().await;
+        }
+        "/pow_worker.js" => {
+            console_log!("Request for PoW worker JS received.");
+            return serve_pow_worker_js().await;
+        }
+        "/challenge_main.js" => {
+            console_log!("Request for main challenge JS received.");
+            return serve_challenge_main_js().await;
         }
         _ => {}
     }
@@ -218,10 +257,10 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                 // No verification headers - issue challenge
                 // Generate a fresh challenge
                 let challenge = hex::encode(&rand::random::<[u8; 16]>());
-                let timestamp = Utc::now();
+                let timestamp_ms = Utc::now().timestamp_millis();
                 
                 // Return the challenge page
-                return generate_challenge_page(&challenge, timestamp);
+                return generate_challenge_page(&challenge, timestamp_ms);
             }
         },
         // Reject any other methods
