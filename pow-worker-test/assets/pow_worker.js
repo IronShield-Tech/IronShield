@@ -1,5 +1,9 @@
 // Simple worker that receives challenge data and performs calculation
-self.onmessage = async function(e) {
+// This file is used as a Web Worker to perform PoW calculations in a separate thread
+// Use the correct global scope to ensure compatibility across environments
+const workerScope = typeof self !== 'undefined' ? self : this;
+
+workerScope.onmessage = async function(e) {
     try {
         // Get challenge data
         const { challenge, difficulty, workerId, startNonce, nonceStep } = e.data;
@@ -12,7 +16,7 @@ self.onmessage = async function(e) {
         
         // Send a message back to indicate we're starting the hashing
         if (workerId === 0) {
-            self.postMessage({
+            workerScope.postMessage({
                 type: "hashingStarted"
             });
         }
@@ -23,7 +27,7 @@ self.onmessage = async function(e) {
         console.log("Worker #" + workerId + " found solution in " + (endTime - startTime).toFixed(2) + "ms");
         
         // Send the result back to the main thread
-        self.postMessage({
+        workerScope.postMessage({
             type: "success",
             solution: solution,
             timeTaken: endTime - startTime,
@@ -31,7 +35,7 @@ self.onmessage = async function(e) {
         });
     } catch (error) {
         console.error("Worker #" + e.data.workerId + " error:", error);
-        self.postMessage({
+        workerScope.postMessage({
             type: "error",
             message: error.message || "Unknown error",
             workerId: e.data.workerId
@@ -67,7 +71,7 @@ async function calculatePowSolution(challenge, difficulty, workerId, startNonce,
         if (hash.startsWith(targetPrefix)) {
             // Found a solution!
             // Send final progress report before returning
-            self.postMessage({
+            workerScope.postMessage({
                 type: "finalProgress",
                 attempts: attempts,
                 workerId: workerId
@@ -88,7 +92,7 @@ async function calculatePowSolution(challenge, difficulty, workerId, startNonce,
         // Yield to prevent blocking the thread completely
         if (attempts % 1000 === 0) {
             // Report actual attempts, not just a signal
-            self.postMessage({
+            workerScope.postMessage({
                 type: "progress",
                 attempts: attempts - lastReportedAttempts, // Report only new attempts since last time
                 totalAttempts: attempts,

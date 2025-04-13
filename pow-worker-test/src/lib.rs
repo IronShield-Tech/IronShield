@@ -211,7 +211,7 @@ fn serve_javascript_file(log_name: &str, content: &'static str) -> Result<Respon
     console_log!("Serving {}...", log_name);
     Response::builder()
         .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/javascript")
+        .header(header::CONTENT_TYPE, "application/javascript; charset=utf-8")
         .header(header::CACHE_CONTROL, "public, max-age=3600")
         .body(body::Body::from(content))
         .map_err(|e| Error::RustError(format!("Failed to serve {}: {}", log_name, e)))
