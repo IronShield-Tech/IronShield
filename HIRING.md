@@ -37,7 +37,7 @@ If you're not working on something cool on the side, we might actually be a litt
 People who build weird tools for fun, run indie projects, or consult on the side are exactly our demographic.  
 Just let us know what you're doing. As long as you're shipping excellent work quickly, we're good.
 
-**AI tooling is fine—but only if you understand the code.**  
+**AI tooling is fine, but only if you understand the code.**  
 We’re not fans of “vibe coding” where people prompt ChatGPT and hope for the best.  
 But if AI helps you go faster while maintaining mastery, that’s great.
 
@@ -79,9 +79,9 @@ We also believe in hiring **versatile, high-agency engineers** who can be reassi
   Don’t send one. We don't want to read your fan fiction about why you're passionate about cybersecurity. This isn't one of those "It's optional but shows commitment" things. We. Will. Not. Read It.
 
 - **One interview.**  
-  No Leetcode. No trivia. No Carl asking about linked lists.  
-  Leetcode is cope for non-technical hiring managers.  
-  We write and ship. You do too.  
+  No Leetcode. No trivia. No Carl from HR asking about reversing linked lists.  
+  We believe Leetcode is cope for non-technical hiring managers who can't properly evaluate talent.  
+  We write and ship. You will too.  
   Come ready to nerd out about something hard you've built—ideally something no one told you to build.
 
 - **Show us something real.**  
