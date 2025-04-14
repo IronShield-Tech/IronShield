@@ -176,3 +176,94 @@ Stop compromising between security and cost-efficiency. Protect your platform wi
 ---
 
 **IronShield: Built for Security. Optimized for Performance. Designed for Everyone.**
+
+IronShield is a proof-of-work protection system for Cloudflare Workers.
+
+## Project Structure
+
+The project follows a modular structure:
+
+- `ironshield-core` - Core library containing shared functionality
+- `ironshield-wasm` - WebAssembly bindings for browser-side code
+- `ironshield-cloudflare` - Cloudflare Worker implementation
+- `assets` - Static assets for the project
+
+## Setting Up and Running the Project
+
+### Prerequisites
+
+You'll need to install:
+
+1. **Rust and Cargo** - [Install from rustup.rs](https://rustup.rs/)
+2. **Node.js and npm** - [Install from nodejs.org](https://nodejs.org/)
+3. **wasm-pack** - Install with:
+   ```bash
+   cargo install wasm-pack
+   ```
+4. **worker-build** - Install with:
+   ```bash
+   cargo install worker-build
+   ```
+
+### Running the Project
+
+A single command will build everything and start a local development server:
+
+```bash
+npx wrangler dev
+```
+
+This command:
+1. Builds the WASM module
+2. Compiles the Cloudflare Worker
+3. Starts a local development server on http://localhost:8787
+
+Alternatively, you can use the npm script:
+
+```bash
+npm run dev
+```
+
+### Building WASM Only
+
+If you only want to build the WebAssembly module:
+
+```bash
+npm run build
+```
+
+### Deployment
+
+To deploy to Cloudflare Workers:
+
+```bash
+npm run deploy
+```
+or
+```bash
+npx wrangler publish
+```
+
+## Development Workflow
+
+1. Make changes to core functionality in `ironshield-core/src/`
+2. Update WASM bindings in `ironshield-wasm/src/`
+3. Modify Worker code in `ironshield-cloudflare/src/`
+4. Run `npx wrangler dev` to test your changes
+
+## Features
+
+- Client-side proof-of-work in WebAssembly
+- Efficient SHA-256 hashing
+- Automatic difficulty adjustment
+- Custom challenge page
+
+## Troubleshooting
+
+- If you see errors about missing assets, ensure you've run the build process at least once
+- For WASM errors, check that wasm-pack is installed correctly
+- For Worker errors, verify your Cloudflare credentials are configured
+
+## License
+
+[BSL License](LICENSE.BSL)
