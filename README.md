@@ -158,6 +158,30 @@ For suspected bots and attackers, IronShield can dynamically increase challenge 
 
 This demonstrates why PoW-based protection is so effective: it transforms a DDoS attack from a technical challenge into an economic one, where attackers must continuously pay substantially more than their targets. Meanwhile, legitimate users experience minimal latency (less than 0.3 seconds) for challenge completion.
 
+### The Reality of Botnet Threats
+
+While theoretical concerns about GPU and ASIC-powered botnets might seem worrying, the practical reality of DDoS attacks is quite different:
+
+**Common Botnet Composition:**
+- Most botnets consist of compromised consumer devices (laptops, desktops, IoT devices)
+- Enterprise cloud instances (like hijacked AWS compute)
+- Standard servers with conventional CPUs
+
+**Why Specialized Hardware Botnets Are Uncommon:**
+1. **Economic Misalignment:** Attackers with access to GPU farms or ASICs have far more profitable opportunities in cryptocurrency mining - using this hardware for DDoS represents a significant opportunity cost
+2. **Technical Barriers:** Utilizing victim GPUs requires specialized malware capabilities beyond most botnet operators
+3. **Operational Complexity:** Managing GPU resources remotely adds detection risk and development overhead
+
+Typical botnets lack the specialized hardware or software engineering capabilities to efficiently bypass the computational barriers. Standard CPU-based botnets face the full economic cost of the PoW system. Even with extremely challenging PoW difficulty settings that a specialized ASIC/GPU attack could theorectically bypass, the aforementioned economic, technical, and operational barries would be quite good at preventing those. Something like a nation-state threat actor could conceivably pull this off despite the incentives not to, but if someone is being DDoS'd by a nation-state this not working is probably the least of their problems.
+
+**Multi-Layered Defense:**
+IronShield doesn't rely solely on computational challenges. Our heuristic bot classification system:
+- Analyzes browser fingerprints and behavior patterns
+- Dynamically adjusts challenge difficulty based on suspicion level
+- Provides similar protections to Cloudflare's bot detection but without blocking legitimate privacy-focused users
+
+This multi-layered approach ensures that even in the unlikely event of specialized hardware being deployed, the combined defenses remain effective while maintaining compatibility with privacy tools like Tor and VPNs.
+
 ### Future-Proof Your Security
 
 IronShield plans to support self-hosted Web Application Firewall (WAF) deployments, offering complete flexibility for organizations requiring additional control or regulatory compliance. 
