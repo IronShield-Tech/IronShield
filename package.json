@@ -1,0 +1,16 @@
+{
+  "name": "ironshield",
+  "version": "0.1.0",
+  "description": "IronShield PoW protection system",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler publish"
+  },
+  "author": "ebosspc <software2070@protonmail.com>",
+  "license": "BSL",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+} 

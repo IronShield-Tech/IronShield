@@ -5,20 +5,49 @@ use axum::{
 use worker::*;
 use hex;
 use chrono::Utc;
+use ironshield_core;
+use rand;
 
-// Include the WebAssembly client module
-mod pow_client;
+// Using placeholders during development to avoid linter errors
+// These will be correctly populated at runtime by wrangler
+#[cfg(not(target_arch = "wasm32"))]
+const WASM_BINARY: &[u8] = &[];
+#[cfg(not(target_arch = "wasm32"))]
+const WASM_JS_BINDINGS: &[u8] = &[];
+#[cfg(not(target_arch = "wasm32"))]
+const CHALLENGE_TEMPLATE: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
+const CHALLENGE_CSS: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
+const POW_WORKER_JS: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
+const CHALLENGE_MAIN_JS: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
+const UI_MANAGER_JS: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
+const WORKER_POOL_MANAGER_JS: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
+const API_CLIENT_JS: &str = "";
 
-// Make the WebAssembly binary and its JS bindings available to include
-const WASM_BINARY: &[u8] = include_bytes!("../wasm/pow_wasm_bg.wasm");
-const WASM_JS_BINDINGS: &[u8] = include_bytes!("../wasm/pow_wasm.js");
-const CHALLENGE_TEMPLATE: &str = include_str!("../assets/challenge_template.html");
-const CHALLENGE_CSS: &str = include_str!("../assets/challenge.css");
-const POW_WORKER_JS: &str = include_str!("../assets/pow_worker.js");
-const CHALLENGE_MAIN_JS: &str = include_str!("../assets/challenge_main.js");
-const UI_MANAGER_JS: &str = include_str!("../assets/ui_manager.js");
-const WORKER_POOL_MANAGER_JS: &str = include_str!("../assets/worker_pool_manager.js");
-const API_CLIENT_JS: &str = include_str!("../assets/api_client.js");
+// For builds with wrangler - fixed paths with correct relative paths
+#[cfg(target_arch = "wasm32")]
+const WASM_BINARY: &[u8] = include_bytes!("../../assets/wasm/ironshield_wasm_bg.wasm");
+#[cfg(target_arch = "wasm32")]
+const WASM_JS_BINDINGS: &[u8] = include_bytes!("../../assets/wasm/ironshield_wasm.js");
+#[cfg(target_arch = "wasm32")]
+const CHALLENGE_TEMPLATE: &str = include_str!("../../assets/challenge_template.html");
+#[cfg(target_arch = "wasm32")]
+const CHALLENGE_CSS: &str = include_str!("../../assets/challenge.css");
+#[cfg(target_arch = "wasm32")]
+const POW_WORKER_JS: &str = include_str!("../../assets/pow_worker.js");
+#[cfg(target_arch = "wasm32")]
+const CHALLENGE_MAIN_JS: &str = include_str!("../../assets/challenge_main.js");
+#[cfg(target_arch = "wasm32")]
+const UI_MANAGER_JS: &str = include_str!("../../assets/ui_manager.js");
+#[cfg(target_arch = "wasm32")]
+const WORKER_POOL_MANAGER_JS: &str = include_str!("../../assets/worker_pool_manager.js");
+#[cfg(target_arch = "wasm32")]
+const API_CLIENT_JS: &str = include_str!("../../assets/api_client.js");
 
 // --- Constants ---
 const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
@@ -103,24 +132,15 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
                 }
             };
 
-            // 3. Verify solution using our Rust code (same as what's in the WASM module)
-            match nonce_str.parse::<u64>() {
-                Ok(_) => {  // We don't need the parsed nonce here, just checking it's valid
-                    // Use the function from pow_client
-                    let result = pow_client::verify_pow_solution(challenge, nonce_str, difficulty);
-                    
-                    if result {
-                        console_log!("Checksum verification successful!");
-                        true
-                    } else {
-                        console_log!("Checksum verification failed.");
-                        false
-                    }
-                }
-                Err(_) => {
-                    console_log!("Invalid nonce format.");
-                    false
-                }
+            // 3. Verify solution using our core library
+            let result = ironshield_core::verify_solution(challenge, nonce_str, difficulty);
+            
+            if result {
+                console_log!("Checksum verification successful!");
+                true
+            } else {
+                console_log!("Checksum verification failed.");
+                false
             }
         }
         _ => {
@@ -225,9 +245,15 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
 
     // Handle request for assets first
     match req.uri().path() {
-        // WASM files (if still needed, keep them)
-        // "/pow_wasm_bg.wasm" => { ... }
-        // "/pow_wasm.js" => { ... }
+        // WASM files
+        "/ironshield_wasm_bg.wasm" => {
+            console_log!("Request for WebAssembly binary received.");
+            return serve_wasm_file().await;
+        }
+        "/ironshield_wasm.js" => {
+            console_log!("Request for WebAssembly JS bindings received.");
+            return serve_wasm_js_file().await;
+        }
         
         // CSS
         "/challenge.css" => {
@@ -315,4 +341,4 @@ mod utils {
         // `set_panic_hook` function to get better error messages if the code panics.
         console_error_panic_hook::set_once();
     }
-}
+} 

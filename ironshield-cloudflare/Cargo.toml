@@ -1,0 +1,30 @@
+[package]
+name = "ironshield-cloudflare"
+version = "0.1.0"
+edition = "2021"
+authors = [ "ebosspc <software2070@protonmail.com>" ]
+description = "Cloudflare Worker for the IronShield PoW system"
+
+[lib]
+name = "ironshield_cloudflare"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+ironshield-core = { path = "../ironshield-core" }
+worker = { version = "0.5.0", features = ["http", "axum"] }
+axum = { version = "0.7", default-features = false }
+axum-macros = "0.4"
+http = "1.0"
+hex = "0.4"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+console_error_panic_hook = "0.1.7"
+wasm-bindgen = { version = "0.2.92", features = ["serde-serialize"] }
+serde-wasm-bindgen = "0.6.0"
+web-sys = { version = "0.3", features = ["console"] }
+js-sys = "0.3"
+getrandom = { version = "0.2", features = ["js"] }
+sha2 = "0.10"
+rand = "0.8" 

@@ -1,4 +1,4 @@
-name = "pow-worker-test"
+name = "ironshield"
 main = "build/worker/shim.mjs"
 compatibility_date = "2025-04-09"
 compatibility_flags = ["nodejs_compat"]
@@ -7,4 +7,4 @@ compatibility_flags = ["nodejs_compat"]
 command = "node build.js && cargo install -q worker-build && worker-build --release"
 
 [site]
-bucket = "./assets"
+bucket = "./assets" 
