@@ -54,9 +54,9 @@ We also believe in hiring **versatile, high-agency engineers** who can be reassi
 ## What You’ll Actually Do
 
 - Write **Rust** targeting `wasm32-unknown-unknown` for edge deployment via Cloudflare Workers.
-- Build adaptive **proof-of-work** systems that escalate based on client behavior.
+- Build adaptive **proof-of-work** systems that escalate based on browser fingerprinting.
 - Create **scraper poison mazes** that confuse and corrupt LLMs.
-- Design **edge-native defenses** that throttle malicious traffic before it hits origin.
+- Design **edge-native defenses** that throttle malicious traffic before it hits origin sites we are protecting.
 - Work independently on unsolved problems—fast.
 
 ---
@@ -82,7 +82,7 @@ We also believe in hiring **versatile, high-agency engineers** who can be reassi
   No Leetcode. No trivia. No Carl from HR asking about reversing linked lists.  
   We believe Leetcode is cope for non-technical hiring managers who can't properly evaluate talent.  
   We write and ship. You will too.  
-  Come ready to nerd out about something hard you've built—ideally something no one told you to build.
+  Come ready to nerd out about something hard you've built, ideally something no one told you to build.
 
 - **Show us something real.**  
   A GitHub repo, side project, exploit, compiler, or cursed performance fix.  
@@ -93,12 +93,12 @@ We also believe in hiring **versatile, high-agency engineers** who can be reassi
 ## Who Should *Not* Apply
 
 **This job is not for most people.**  
-We believe in being upfront and honest. We don’t want to waste your time—or ours.
+We believe in being upfront and honest. We don’t want to waste your time (or ours).
 
 You’ll likely be miserable here if:
 
 - You think **AWS is the right way** to build infra.
-- You believe **JavaScript is a good language**, and **TypeScript makes it better**.
+- You believe **JavaScript is a good language**, and **TypeScript somehow "fixes" it**.
 - You’ve never self-hosted anything.
 - You like **low-code tools**, **clickOps**, or **no-code platforms**.
 - You rely on **project managers** to tell you what matters.
@@ -117,7 +117,7 @@ You’ll likely be miserable here if:
 You’ll fit in if:
 
 - You run **Gentoo**, **Arch**, **NixOS**, or something even more cursed.
-- You obsessively **self-host** your mail, DNS, monitoring, pastebins, and maybe your own git.
+- You obsessively **self-host** your DNS, monitoring, mail (if self-host email consider seeking professional help, but please apply), pastebins, and maybe your own git.
 - You think **proprietary cloud software** is a trap.
 - You’ve built your own **language**, **VM**, or **compiler** just to understand the internals.
 - You’ve done **offensive security**, CTFs, reverse engineering, or rootkit-level work.
@@ -126,7 +126,7 @@ You’ll fit in if:
 - You’re **neurodivergent**, **autistic**, or just naturally socially awkward—and have trouble fitting into most PM-driven environments.  
   **If you hate small talk, this is the place for you.**
 - You ship great code, independently, fast—and don’t want to be micromanaged.
-- You’re juggling other projects or jobs and still ship faster than most full-timers. That’s not a problem—it’s a signal.
+- You’re juggling other projects or jobs and still ship faster than most full-timers. That’s not a problem, it’s a signal.
 - You want to keep leveling up and become fluent across the entire stack.
 
 ---
@@ -135,7 +135,7 @@ You’ll fit in if:
 **Equity?** Yes  
 **Meetings?** One per week  
 **Slack?** No. We use Discord. It’s better.  
-**Approval workflows?** Nope. Just build it.  
+**Approval workflows?** Nope. Just build it, ideally without asking.  
 **Learning on company time?** Absolutely.  
 **Side projects?** Encouraged.
 
