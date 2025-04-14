@@ -53,8 +53,16 @@ async function solveChallenge() {
         // Check if Web Workers are supported
         if (window.Worker) {
             console.log("Using Web Workers for background PoW calculation");
-            const workerPool = new WorkerPoolManager('/pow_worker.js'); // Pass worker script path
+            // Get the current URL's origin to ensure we're loading from the same origin
+            const baseUrl = window.location.origin;
+            // Pass the original worker script path as fallback with absolute URL - without /assets/ prefix
+            const workerPool = new WorkerPoolManager(`${baseUrl}/pow_worker.js`);
+            console.log("Using fallback worker path:", `${baseUrl}/pow_worker.js`);
 
+            // Store challenge and difficulty in the worker pool for later use
+            workerPool.currentChallenge = challenge;
+            workerPool.currentDifficulty = difficulty;
+            
             // Set up progress reporting from the worker pool to the UI manager
             let lastUIUpdate = 0;
             workerPool.onProgress = (totalAttempts, hashRate) => {
@@ -67,6 +75,15 @@ async function solveChallenge() {
                  // We can also update the progress bar more smoothly here if desired
                  // e.g., uiManager.setProgress(Math.min(95, some_estimated_completion_percentage));
             };
+            
+            // Add a callback for WASM status updates
+            workerPool.onWasmStatus = (isWasmAvailable, isThreaded) => {
+                if (isWasmAvailable) {
+                    uiManager.setStatus(`Using WebAssembly${isThreaded ? ' with multi-threading' : ''} for faster computation...`);
+                } else {
+                    uiManager.setStatus("Using JavaScript implementation (consider enabling WASM for better performance)...");
+                }
+            };
 
             // Set initial status before starting the pool
             uiManager.setStatus("Computing hash values (using all available CPU cores)...");
@@ -74,6 +91,11 @@ async function solveChallenge() {
 
             // Start solving using the worker pool
             solution = await workerPool.solve(challenge, difficulty, timeoutSeconds);
+            
+            // Display WASM usage in final status if it was used
+            if (solution.usedWasm) {
+                console.log(`Solution found using WASM${solution.usedThreadedWasm ? ' with threads' : ''}`);
+            }
 
         } else {
             // Fallback for browsers without Web Workers
@@ -105,9 +127,22 @@ async function solveChallenge() {
                 timestamp,
                 difficultyStr
             );
+            
             // Render the response from the server
             document.open();
-            document.write(responseHtml);
+            
+            // Ensure the response includes DOCTYPE to avoid Quirks Mode
+            // Use a more robust check for DOCTYPE declaration that handles case and whitespace
+            let htmlToWrite = responseHtml;
+            if (!responseHtml.trim().match(/^\s*<!doctype\s+html\s*>/i)) {
+                const docType = '<!DOCTYPE html>\n';
+                htmlToWrite = docType + responseHtml;
+                console.log("Adding DOCTYPE declaration to response HTML to prevent Quirks Mode");
+            } else {
+                console.log("Response HTML already contains DOCTYPE declaration");
+            }
+            
+            document.write(htmlToWrite);
             document.close();
         } catch (error) {
             // ApiClient throws an error if fetch fails or status is not ok

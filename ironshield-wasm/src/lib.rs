@@ -5,6 +5,10 @@ use sha2::{Sha256, Digest};
 #[allow(unused_imports)]
 use hex;
 
+// Support for threading in WASM
+#[cfg(feature = "parallel")]
+use wasm_bindgen_rayon::init_thread_pool;
+
 // Export functions to JavaScript
 #[wasm_bindgen]
 pub fn solve_pow_challenge(challenge: &str, difficulty: usize) -> Result<JsValue, JsValue> {
@@ -32,6 +36,51 @@ pub fn solve_pow_challenge(challenge: &str, difficulty: usize) -> Result<JsValue
         Ok(js_value) => Ok(js_value),
         Err(err) => Err(JsValue::from_str(&format!("Error serializing result: {:?}", err))),
     }
+}
+
+// Initialize the thread pool for parallel processing
+#[wasm_bindgen]
+#[cfg(feature = "parallel")]
+pub async fn init_threads(num_threads: usize) -> Result<(), JsValue> {
+    // Initialize the thread pool with the specified number of threads
+    init_thread_pool(num_threads).map_err(|e| JsValue::from_str(&format!("Error initializing thread pool: {}", e)))?;
+    Ok(())
+}
+
+// Solve the challenge using parallel processing
+#[wasm_bindgen]
+#[cfg(feature = "parallel")]
+pub fn solve_pow_challenge_parallel(challenge: &str, difficulty: usize, num_threads: usize) -> Result<JsValue, JsValue> {
+    // Set panic hook for better error messages
+    console_error_panic_hook::set_once();
+    
+    // Solve the challenge using parallel processing
+    let (nonce, hash) = ironshield_core::find_solution_parallel(challenge, difficulty, num_threads)
+        .map_err(|e| JsValue::from_str(&format!("Error solving challenge in parallel: {}", e)))?;
+    
+    // Create the solution result
+    let solution_result = SolutionResult {
+        nonce_str: nonce.to_string(),
+        nonce,
+        hash: hash.clone(),
+        hash_prefix: hash[..10].to_string(),
+    };
+    
+    // Use serde-wasm-bindgen to convert to JsValue
+    match serde_wasm_bindgen::to_value(&solution_result) {
+        Ok(js_value) => Ok(js_value),
+        Err(err) => Err(JsValue::from_str(&format!("Error serializing parallel result: {:?}", err))),
+    }
+}
+
+// Add a function to detect if threads are supported
+#[wasm_bindgen]
+pub fn are_threads_supported() -> bool {
+    #[cfg(feature = "parallel")]
+    return true;
+
+    #[cfg(not(feature = "parallel"))]
+    return false;
 }
 
 // Add a simple validation function that accepts a string nonce

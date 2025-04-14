@@ -21,6 +21,8 @@ const CHALLENGE_CSS: &str = "";
 #[cfg(not(target_arch = "wasm32"))]
 const POW_WORKER_JS: &str = "";
 #[cfg(not(target_arch = "wasm32"))]
+const WASM_POW_WORKER_JS: &str = "";
+#[cfg(not(target_arch = "wasm32"))]
 const CHALLENGE_MAIN_JS: &str = "";
 #[cfg(not(target_arch = "wasm32"))]
 const UI_MANAGER_JS: &str = "";
@@ -40,6 +42,8 @@ const CHALLENGE_TEMPLATE: &str = include_str!("../../assets/challenge_template.h
 const CHALLENGE_CSS: &str = include_str!("../../assets/challenge.css");
 #[cfg(target_arch = "wasm32")]
 const POW_WORKER_JS: &str = include_str!("../../assets/pow_worker.js");
+#[cfg(target_arch = "wasm32")]
+const WASM_POW_WORKER_JS: &str = include_str!("../../assets/wasm_pow_worker.js");
 #[cfg(target_arch = "wasm32")]
 const CHALLENGE_MAIN_JS: &str = include_str!("../../assets/challenge_main.js");
 #[cfg(target_arch = "wasm32")]
@@ -203,7 +207,20 @@ async fn serve_pow_worker_js() -> Result<Response<body::Body>> {
         // Add cache control headers
         .header(header::CACHE_CONTROL, "public, max-age=3600") 
         .body(body::Body::from(POW_WORKER_JS))
-        .map_err(|e| Error::RustError(format!("Failed to serve PoW worker JS: {}", e)))
+        .map_err(|e| Error::RustError(format!("Failed to serve PoW worker: {}", e)))
+}
+
+// Function to serve the WASM PoW worker JavaScript file
+async fn serve_wasm_pow_worker_js() -> Result<Response<body::Body>> {
+    console_log!("Serving WASM PoW worker JS...");
+    
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/javascript")
+        // Add cache control headers
+        .header(header::CACHE_CONTROL, "public, max-age=3600") 
+        .body(body::Body::from(WASM_POW_WORKER_JS))
+        .map_err(|e| Error::RustError(format!("Failed to serve WASM PoW worker: {}", e)))
 }
 
 // Function to serve the main challenge JavaScript file
@@ -246,39 +263,43 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
     // Handle request for assets first
     match req.uri().path() {
         // WASM files
-        "/ironshield_wasm_bg.wasm" => {
+        "/ironshield_wasm_bg.wasm" | "/assets/ironshield_wasm_bg.wasm" => {
             console_log!("Request for WebAssembly binary received.");
             return serve_wasm_file().await;
         }
-        "/ironshield_wasm.js" => {
+        "/ironshield_wasm.js" | "/assets/ironshield_wasm.js" => {
             console_log!("Request for WebAssembly JS bindings received.");
             return serve_wasm_js_file().await;
         }
         
         // CSS
-        "/challenge.css" => {
+        "/challenge.css" | "/assets/challenge.css" => {
             console_log!("Request for challenge CSS received.");
             return serve_challenge_css().await;
         }
         
         // JavaScript files
-        "/pow_worker.js" => {
+        "/pow_worker.js" | "/assets/pow_worker.js" => {
             console_log!("Request for PoW worker JS received.");
             return serve_pow_worker_js().await;
         }
-        "/challenge_main.js" => {
+        "/wasm_pow_worker.js" | "/assets/wasm_pow_worker.js" => {
+            console_log!("Request for WASM PoW worker JS received.");
+            return serve_wasm_pow_worker_js().await;
+        }
+        "/challenge_main.js" | "/assets/challenge_main.js" => {
             console_log!("Request for main challenge JS received.");
             return serve_challenge_main_js().await;
         }
-        "/ui_manager.js" => {
+        "/ui_manager.js" | "/assets/ui_manager.js" => {
             console_log!("Request for UI manager JS received.");
             return serve_ui_manager_js().await;
         }
-        "/worker_pool_manager.js" => {
+        "/worker_pool_manager.js" | "/assets/worker_pool_manager.js" => {
             console_log!("Request for Worker pool manager JS received.");
             return serve_worker_pool_manager_js().await;
         }
-        "/api_client.js" => {
+        "/api_client.js" | "/assets/api_client.js" => {
             console_log!("Request for API client JS received.");
             return serve_api_client_js().await;
         }
