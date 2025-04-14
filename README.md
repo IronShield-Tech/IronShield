@@ -68,19 +68,6 @@ Unlike previous solutions like PoW-Shield, which required running directly on yo
 
 > **Note:** PoW-Shield's need to run on your own server isn't even its biggest problem anymore. It's now unmaintained since [its really obvious drug kingpin maintainer was arrested for being a darknet drug kingpin](https://www.ice.gov/news/releases/incognito-market-owner-arrested-operating-one-largest-online-narcotics-marketplaces). In contrast, we can promise that our developers stick to coding, not running $100M dark web markets! Ironically, necessity drove innovation when darknet operators needed protection without relying on mainstream security providers (e.g. Cloudflare) using black-box bot detection and blocking that would just block every single Tor/VPN user. This inadvertently pioneered techniques that would later benefit legitimate privacy-focused services requiring bot protection without massive third-party dependencies.
 
-### WebAssembly Edge Advantage
-
-IronShield's innovative WebAssembly-powered security delivers unprecedented advantages:
-
-- **15x Performance Improvement:** Our Rust-to-WebAssembly compilation dramatically outperforms JavaScript-based alternatives, completing proof-of-work challenges up to 15x faster.
-- **Consistent Cross-Browser Execution:** Unlike JavaScript implementations with variable performance across browsers, our WebAssembly solution ensures uniform security enforcement across all platforms.
-- **Precise Challenge Calibration:** The predictable, consistent performance allows for fine-tuned difficulty settings that work reliably across different devices and browsers.
-- **Browser-Agnostic Security:** Works consistently across all modern browsers, headless environments, and automation tools without degradation.
-- **Reduced User Friction:** Lightning-fast challenge completion (typically under 0.3 seconds) creates a seamless experience for legitimate users.
-- **Predictable Resource Usage:** Our garbage-collector-free Rust implementation maintains consistent, low memory overhead with minimal performance variability.
-- **Edge-Optimized Code:** Purpose-built for deployment on Cloudflare® Workers and other edge computing platforms.
-- **Privacy Compatibility:** Works reliably with privacy tools like Tor and VPNs without compromising security.
-
 ### Key Features
 
 - **Proof of Work (PoW) Challenges:** Forces attackers to consume significant CPU resources, making automated attacks economically unsustainable.
@@ -89,9 +76,18 @@ IronShield's innovative WebAssembly-powered security delivers unprecedented adva
 - **Advanced Web Application Firewall (WAF):** Detects and blocks malicious patterns before they reach your application.
 - **SEO Bot Whitelisting & Verification:** Preserves search engine ranking by whitelisting known bots (e.g., Googlebot, Bingbot) and verifying their identity through reverse/forward DNS lookups to prevent User-Agent spoofing.
 - **Distributed & Scalable:** Deploy horizontally across multiple nodes and infrastructure seamlessly.
-- **Data Privacy:** Traffic stays securely within your infrastructure without routing through third-party services.
+- **Privacy Compatibility:** Works reliably with privacy tools like Tor and VPNs without compromising security. Traditional black box heuristic bot detection and prevention implementations outright block these users simply for using a VPN or Tor. Ironshield allows legitimate users using these privacy tools a way in without compromising on security.
 - **Minimal Resource Footprint:** Uses significantly fewer resources than Node.js or Python-based solutions.
 - **AI Scraper Maze (Optional "AI Revenge Mode"):** Deploy decoy content designed specifically to confuse, poison, and frustrate AI-powered web scrapers and data crawlers.
+
+### WebAssembly Edge Advantage
+
+IronShield's innovative WebAssembly-powered security delivers unprecedented advantages:
+
+- **15x Performance Improvement:** Our Rust-to-WebAssembly compilation dramatically outperforms JavaScript-based alternatives, completing proof-of-work challenges up to 15x faster. For example, to solve a challenge with base difficulty 5, an optimized multithreaded javascript solution could compute a hash with 5 leading zeroes on an m1 macbook in around 10-15 seconds. The Rust WASM version allows it to do the same computation in around 350ms.
+- **Consistent Cross-Browser Execution & Calibration:** Unlike JavaScript implementations with variable performance across browsers, our WebAssembly solution ensures uniform security enforcement across all platforms. For example, Chromium based browsers for some reason can hash 25% faster than Firefox based browsers when utilizing traditional js hashing methods (crypto.subtle.digest). The predictable, consistent performance also allows for fine-tuned difficulty settings that work reliably across different devices, browsers, headless environments, and automation tools.
+- **Reduced User Friction:** Lightning-fast challenge completion (typically under 0.3 seconds) creates a seamless experience for legitimate users.
+- **Edge-Optimized Code:** Purpose-built for deployment on Cloudflare® Workers and other edge computing platforms.
 
 ### The Rust Advantage
 
