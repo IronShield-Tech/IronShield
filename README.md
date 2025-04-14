@@ -215,6 +215,50 @@ You'll need to install:
    cargo install worker-build
    ```
 
+### Installing the Nightly Toolchain for Threading Support
+
+IronShield uses WebAssembly threading for optimal performance. You'll need to install the Rust nightly toolchain for your platform:
+
+#### macOS (Intel or Apple Silicon)
+```bash
+# For Apple Silicon (M1/M2/M3)
+rustup toolchain install nightly-aarch64-apple-darwin
+
+# For Intel Macs
+rustup toolchain install nightly-x86_64-apple-darwin
+```
+
+#### Linux
+```bash
+# For x86_64 architecture (most common)
+rustup toolchain install nightly-x86_64-unknown-linux-gnu
+
+# For ARM64 architecture
+rustup toolchain install nightly-aarch64-unknown-linux-gnu
+```
+
+#### Windows
+```bash
+rustup toolchain install nightly-x86_64-pc-windows-msvc
+```
+
+You can verify the installation with:
+```bash
+rustup toolchain list
+```
+
+This enables the build script to use WebAssembly threading features (+atomics, +bulk-memory, +mutable-globals) which significantly improves performance for proof-of-work calculations.
+
+### Installing Project Dependencies
+
+Before running the project, install all required npm dependencies:
+
+```bash
+npm install
+```
+
+This will install all packages specified in package.json, including development dependencies like Wrangler that are necessary for building and running the project.
+
 ### Running the Project
 
 A single command will build everything and start a local development server:
