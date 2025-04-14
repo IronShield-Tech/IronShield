@@ -3,16 +3,16 @@ We’re not looking for people who want a “nice” job they can show to a futu
 This is **not** a resume-building gig where you spend 18 months centering divs and attending retros.  
 This is a place that *won’t insult* the **time**, **intelligence**, or **problem-solving ability** of real engineers.
 
-We pay well because we expect high performance—but here, **high performance isn’t ticket velocity**.  
+We pay well because we expect high performance. However, here, **high performance isn’t ticket velocity**.  
 It’s how effectively you solve hard, technical problems that don’t have clean documentation or stackoverflow answers.
 
 ---
 
-**IronShield** is building the most aggressive, high-performance Layer 7 firewall on the internet—Rust-powered, compiled to WASM, and deployed entirely at the edge. We stop scrapers, API abuse, and botnets *before* they touch your backend.
+IronShield is building the most aggressive, high-performance Layer 7 firewall on the internet—Rust-powered, compiled to WASM, and deployed entirely at the edge. We stop scrapers, API abuse, and botnets *before* they touch your backend.
 
 But the tech stack is just a reflection of the mindset.  
 We’re not scaling through middle managers, OKRs, or ticket grooming.  
-This company runs on **weaponized autism**—and we’re looking for more of it.
+This company runs on **weaponized autism**, and we’re looking for more of it.
 
 ---
 
@@ -27,7 +27,7 @@ You won’t get blocked by approvals or roadmap committees.
 
 **We don’t do traditional hours.**  
 We have one short meeting every Monday to keep everyone synced.  
-The rest of the time is yours—focused, heads-down, and uninterrupted.
+The rest of the time is yours: focused, heads-down, and uninterrupted.
 
 We use **Discord**, not Slack.  
 Better threading, better voice, better bots. Ignore the gamer branding—it works.
@@ -39,12 +39,12 @@ Just let us know what you're doing. As long as you're shipping excellent work qu
 
 **AI tooling is fine—but only if you understand the code.**  
 We’re not fans of “vibe coding” where people prompt ChatGPT and hope for the best.  
-But if AI helps you go faster while maintaining mastery—that’s great.
+But if AI helps you go faster while maintaining mastery, that’s great.
 
 **We want you to become the most skilled developer you can be.**  
 You’ll likely be unfamiliar with *part* of our stack—and that’s by design.  
 Unsolved problems aren’t solved yet. We care more about your ability to **learn fast** than your resume’s keyword density.  
-Take an hour or two each day—on company time—to learn a skill you think applies.  
+Take an hour or two each day on company time to learn a skill you think applies.  
 We want our engineers to become **fluent across the stack**, not siloed.
 
 We also believe in hiring **versatile, high-agency engineers** who can be reassigned internally as needs change—not people who’ve spent 10 years optimizing the same React modal. If you’re sharp and adaptable, there’s always room to grow.
@@ -76,7 +76,7 @@ We also believe in hiring **versatile, high-agency engineers** who can be reassi
 ## How We Hire
 
 - **No cover letter.**  
-  Don’t send one. We won’t read it.
+  Don’t send one. We don't want to read your fan fiction about why you're passionate about cybersecurity. This isn't one of those "It's optional but shows commitment" things. We. Will. Not. Read It.
 
 - **One interview.**  
   No Leetcode. No trivia. No Carl asking about linked lists.  
@@ -142,4 +142,4 @@ You’ll fit in if:
 ---
 
 ### IronShield is the moat no one else is building.  
-If this reads more like your ideal peer group than a job post—**reach out**.
+If this reads more like your ideal peer group than a job post, **reach out**.
