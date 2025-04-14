@@ -160,7 +160,7 @@ This demonstrates why PoW-based protection is so effective: it transforms a DDoS
 
 ### The Reality of Botnet Threats
 
-While theoretical concerns about GPU and ASIC-powered botnets might seem worrying, the practical reality of DDoS attacks is quite different:
+While theoretical concerns about botnets using specialized hardware like GPU's and ASIC's to "game" the PoW hashing calculations might seem worrying, the practical reality of DDoS attacks is quite different:
 
 **Common Botnet Composition:**
 - Most botnets consist of compromised consumer devices (laptops, desktops, IoT devices)
@@ -172,7 +172,7 @@ While theoretical concerns about GPU and ASIC-powered botnets might seem worryin
 2. **Technical Barriers:** Utilizing victim GPUs requires specialized malware capabilities beyond most botnet operators
 3. **Operational Complexity:** Managing GPU resources remotely adds detection risk and development overhead
 
-Typical botnets lack the specialized hardware or software engineering capabilities to efficiently bypass the computational barriers. Standard CPU-based botnets face the full economic cost of the PoW system. Even with extremely challenging PoW difficulty settings that a specialized ASIC/GPU attack could theorectically bypass, the aforementioned economic, technical, and operational barries would be quite good at preventing those. Something like a nation-state threat actor could conceivably pull this off despite the incentives not to, but if someone is being DDoS'd by a nation-state this not working is probably the least of their problems.
+Typical botnets lack the specialized hardware or software engineering capabilities to efficiently bypass the computational barriers. Standard CPU-based botnets face the full economic cost of the PoW system. Even with extremely challenging PoW difficulty settings that a specialized ASIC/GPU attack could theorectically bypass, the aforementioned barriers would be quite good at preventing those. Something like a nation-state threat actor could conceivably pull this off despite the incentives not to, but if someone is being DDoS'd by a nation-state this software not working is probably the least of their problems.
 
 **Multi-Layered Defense:**
 IronShield doesn't rely solely on computational challenges. Our heuristic bot classification system:
@@ -182,26 +182,12 @@ IronShield doesn't rely solely on computational challenges. Our heuristic bot cl
 
 This multi-layered approach ensures that even in the unlikely event of specialized hardware being deployed, the combined defenses remain effective while maintaining compatibility with privacy tools like Tor and VPNs.
 
-### Future-Proof Your Security
-
-IronShield plans to support self-hosted Web Application Firewall (WAF) deployments, offering complete flexibility for organizations requiring additional control or regulatory compliance. 
-
 ### Getting Started
 
 Deploy IronShield effortlessly via Cloudflare® Workers or your own infrastructure:
 - Clone the IronShield repository.
 - Configure your security rules and PoW settings.
 - Deploy using Docker, Kubernetes, or directly via Cloudflare® Workers.
-
-### Join the Revolution in Edge Security
-
-Stop compromising between security and cost-efficiency. Protect your platform with IronShield—enterprise-grade L7 DDoS protection designed specifically for your needs.
-
----
-
-**IronShield: Built for Security. Optimized for Performance. Designed for Everyone.**
-
-IronShield is a proof-of-work protection system for Cloudflare Workers.
 
 ## Project Structure
 
