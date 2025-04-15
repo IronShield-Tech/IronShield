@@ -165,6 +165,11 @@ async fn serve_wasm_file() -> Result<Response<body::Body>> {
         .header(header::CACHE_CONTROL, "public, max-age=3600")
         // Add CORS headers to ensure it can be loaded from different origins if needed
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        // Add streaming-friendly headers
+        .header(header::ACCEPT_RANGES, "bytes")
+        // Add content-encoding header to indicate no compression
+        // This is important for streaming as compressed responses need to be fully downloaded first
+        .header(header::CONTENT_ENCODING, "identity")
         .body(body::Body::from(WASM_BINARY.to_vec()))
         .map_err(|e| Error::RustError(format!("Failed to serve WebAssembly: {}", e)))
 }
@@ -263,11 +268,11 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
     // Handle request for assets first
     match req.uri().path() {
         // WASM files
-        "/ironshield_wasm_bg.wasm" | "/assets/ironshield_wasm_bg.wasm" => {
+        "/ironshield_wasm_bg.wasm" | "/assets/wasm/ironshield_wasm_bg.wasm" => {
             console_log!("Request for WebAssembly binary received.");
             return serve_wasm_file().await;
         }
-        "/ironshield_wasm.js" | "/assets/ironshield_wasm.js" => {
+        "/ironshield_wasm.js" | "/assets/wasm/ironshield_wasm.js" => {
             console_log!("Request for WebAssembly JS bindings received.");
             return serve_wasm_js_file().await;
         }

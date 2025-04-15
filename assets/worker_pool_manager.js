@@ -115,7 +115,8 @@ export class WorkerPoolManager {
 
         switch (data.type) {
             case "init_complete":
-                console.log(`Worker #${data.workerId || workerIndex} initialization complete`);
+                const initTime = Date.now() - this.startTime;
+                console.log(`[WORKER-POOL] Worker #${data.workerId || workerIndex} initialization complete after ${initTime}ms`);
                 this.workersInitialized++;
                 
                 // Store WASM availability status from this worker
@@ -126,20 +127,23 @@ export class WorkerPoolManager {
                     // Call the WASM status callback if provided
                     if (this.onWasmStatus) {
                         try {
+                            console.log(`[WORKER-POOL] Worker #${data.workerId} reports WASM ${data.wasmThreaded ? 'with threads' : 'without threads'}`);
                             this.onWasmStatus(true, data.wasmThreaded);
                         } catch (e) {
                             console.error("Error in onWasmStatus callback:", e);
                         }
                     }
                     
-                    console.log(`Worker #${data.workerId} using WASM${data.wasmThreaded ? ' with threads' : ''}`);
+                    console.log(`[WORKER-POOL] Worker #${data.workerId} using WASM${data.wasmThreaded ? ' with threads' : ''}`);
                 } else if (data.error) {
-                    console.warn(`Worker #${data.workerId} couldn't use WASM: ${data.error}`);
+                    console.warn(`[WORKER-POOL] Worker #${data.workerId} couldn't use WASM: ${data.error}`);
                 }
                 
                 // Once all workers are initialized, start solving
                 if (this.workersInitialized === this.numCores) {
+                    console.log(`[WORKER-POOL] All ${this.numCores} workers initialized, starting solution...`);
                     // Now send the actual solve command to all workers
+                    const solveStartTime = Date.now();
                     for (let i = 0; i < this.workers.length; i++) {
                         this.workers[i].postMessage({
                             type: 'solve',
@@ -150,17 +154,20 @@ export class WorkerPoolManager {
                             nonceStep: this.numCores // Each worker increments by the total number of cores
                         });
                     }
+                    console.log(`[WORKER-POOL] Solve commands sent to all workers at ${solveStartTime - this.startTime}ms`);
                 }
                 break;
 
             case "success":
-                console.log(`Solution found by worker #${data.workerId || workerIndex}`);
+                const solveTime = Date.now() - this.startTime;
+                console.log(`[WORKER-POOL] Solution found by worker #${data.workerId || workerIndex} after ${solveTime}ms`);
                 this.solutionFound = true;
                 this.terminate(); // Stop all other workers
                 if (this.resolvePromise) {
                     // Note if WASM was used in the solution for metrics
                     data.solution.usedWasm = data.useWasm;
                     data.solution.usedThreadedWasm = data.wasmThreaded;
+                    data.solution.solveTimeMs = solveTime;
                     this.resolvePromise(data.solution);
                 } else {
                     console.error("Resolve function not available when solution found!");

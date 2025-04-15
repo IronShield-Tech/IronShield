@@ -3,6 +3,8 @@ export class UIManager {
     constructor(statusElementId = 'status', progressElementId = 'progress') {
         this.statusDiv = document.getElementById(statusElementId);
         this.progressBar = document.getElementById(progressElementId);
+        this.startTime = Date.now();
+        this.statusHistory = [];
 
         if (!this.statusDiv || !this.progressBar) {
             console.error('UI elements (status or progress) not found!');
@@ -20,7 +22,9 @@ export class UIManager {
         if (this.statusDiv) {
             this.statusDiv.textContent = text;
         }
-        console.log(`UI Status: ${text}`); // Also log to console for debugging
+        const timestamp = Date.now() - this.startTime;
+        this.statusHistory.push({ time: timestamp, text });
+        console.log(`[UI-STATUS] @${timestamp}ms: ${text}`);
     }
 
     /**
@@ -31,6 +35,11 @@ export class UIManager {
         if (this.progressBar) {
             this.progressBar.value = Math.max(0, Math.min(100, value));
         }
+        
+        if (value % 20 === 0) { // Only log at 0%, 20%, 40%, 60%, 80%, 100%
+            const timestamp = Date.now() - this.startTime;
+            console.log(`[UI-PROGRESS] @${timestamp}ms: ${value}%`);
+        }
     }
 
     /**
@@ -40,6 +49,7 @@ export class UIManager {
     showError(message) {
         this.setStatus(message);
         this.setProgress(0);
-        console.error(`UI Error: ${message}`);
+        const timestamp = Date.now() - this.startTime;
+        console.error(`[UI-ERROR] @${timestamp}ms: ${message}`);
     }
 } 

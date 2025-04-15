@@ -5,7 +5,52 @@ import { ApiClient } from './api_client.js';
 // First, load the WebAssembly module and bindings
 // async function loadWasmModule(retryCount = 0) { ... }
 
+// Track performance metrics
+const perfMetrics = {
+    pageLoadTime: window.pageStartTime || performance.now(),
+    challengeStartTime: performance.now(),
+    wasmReady: false,
+    wasmReadyTime: 0,
+    wasmStatus: 'not started',
+    wasmThreaded: false,
+    solutionTime: 0,
+    resourceTimings: []
+};
+
+// Collect resource timings
+function collectResourceTimings() {
+    if (performance && performance.getEntriesByType) {
+        const resources = performance.getEntriesByType('resource');
+        const wasmResources = resources.filter(r => r.name.includes('wasm'));
+        
+        // Log timing data for WASM resources
+        console.log('[PERF] WASM Resource Timings:');
+        wasmResources.forEach(resource => {
+            console.log(`[PERF] Resource: ${resource.name.split('/').pop()}`);
+            console.log(`[PERF]   - Start time: ${Math.round(resource.startTime)}ms`);
+            console.log(`[PERF]   - Response start: ${Math.round(resource.responseStart)}ms`);
+            console.log(`[PERF]   - Response end: ${Math.round(resource.responseEnd)}ms`);
+            console.log(`[PERF]   - Duration: ${Math.round(resource.duration)}ms`);
+            console.log(`[PERF]   - Size: ${resource.transferSize ? Math.round(resource.transferSize / 1024) + 'KB' : 'N/A'}`);
+            console.log(`[PERF]   - Was preloaded: ${resource.initiatorType === 'link'}`);
+            
+            perfMetrics.resourceTimings.push({
+                name: resource.name.split('/').pop(),
+                startTime: Math.round(resource.startTime),
+                responseStart: Math.round(resource.responseStart),
+                responseEnd: Math.round(resource.responseEnd),
+                duration: Math.round(resource.duration),
+                size: resource.transferSize ? Math.round(resource.transferSize / 1024) : null,
+                wasPreloaded: resource.initiatorType === 'link'
+            });
+        });
+    }
+}
+
 async function solveChallenge() {
+    const startTime = performance.now();
+    console.log(`[PERF] Challenge solving started at ${Math.round(startTime)}ms since page load`);
+    
     const uiManager = new UIManager();
     const apiClient = new ApiClient();
 
@@ -52,7 +97,7 @@ async function solveChallenge() {
         
         // Check if Web Workers are supported
         if (window.Worker) {
-            console.log("Using Web Workers for background PoW calculation");
+            console.log(`[PERF] Starting worker pool at ${Math.round(performance.now() - startTime)}ms`);
             // Get the current URL's origin to ensure we're loading from the same origin
             const baseUrl = window.location.origin;
             // Pass the original worker script path as fallback with absolute URL - without /assets/ prefix
@@ -78,6 +123,14 @@ async function solveChallenge() {
             
             // Add a callback for WASM status updates
             workerPool.onWasmStatus = (isWasmAvailable, isThreaded) => {
+                const wasmStatusTime = performance.now() - startTime;
+                perfMetrics.wasmReady = isWasmAvailable;
+                perfMetrics.wasmReadyTime = wasmStatusTime;
+                perfMetrics.wasmStatus = isWasmAvailable ? 'initialized' : 'failed';
+                perfMetrics.wasmThreaded = isThreaded;
+                
+                console.log(`[PERF] WASM status update at ${Math.round(wasmStatusTime)}ms: ${isWasmAvailable ? 'available' : 'unavailable'}, threaded: ${isThreaded}`);
+                
                 if (isWasmAvailable) {
                     uiManager.setStatus(`Using WebAssembly${isThreaded ? ' with multi-threading' : ''} for faster computation...`);
                 } else {
@@ -89,12 +142,22 @@ async function solveChallenge() {
             uiManager.setStatus("Computing hash values (using all available CPU cores)...");
             uiManager.setProgress(25);
 
+            // Get resource timings before solving
+            collectResourceTimings();
+            
             // Start solving using the worker pool
+            const solveStartTime = performance.now();
+            console.log(`[PERF] Starting worker pool solve at ${Math.round(solveStartTime - startTime)}ms`);
             solution = await workerPool.solve(challenge, difficulty, timeoutSeconds);
+            
+            // Calculate solving time
+            const solveEndTime = performance.now();
+            perfMetrics.solutionTime = solveEndTime - solveStartTime;
+            console.log(`[PERF] Solution found after ${Math.round(perfMetrics.solutionTime)}ms`);
             
             // Display WASM usage in final status if it was used
             if (solution.usedWasm) {
-                console.log(`Solution found using WASM${solution.usedThreadedWasm ? ' with threads' : ''}`);
+                console.log(`[PERF] Solution found using WASM${solution.usedThreadedWasm ? ' with threads' : ''}`);
             }
 
         } else {
@@ -118,6 +181,18 @@ async function solveChallenge() {
         // Update UI using uiManager - Challenge Solved!
         uiManager.setStatus(`Challenge solved! (Nonce: ${solution.nonce_str}, Hash: ${solution.hash_prefix}...)`);
         uiManager.setProgress(100);
+        
+        // Get final resource timings
+        collectResourceTimings();
+        
+        // Log performance summary
+        console.log(`[PERF] === Performance Summary ===`);
+        console.log(`[PERF] Page load to challenge start: ${Math.round(startTime - perfMetrics.pageLoadTime)}ms`);
+        console.log(`[PERF] WASM available: ${perfMetrics.wasmReady}, ready at: ${Math.round(perfMetrics.wasmReadyTime)}ms`);
+        console.log(`[PERF] WASM threaded: ${perfMetrics.wasmThreaded}`);
+        console.log(`[PERF] Solution time: ${Math.round(perfMetrics.solutionTime)}ms`);
+        console.log(`[PERF] Total time from page load: ${Math.round(performance.now() - perfMetrics.pageLoadTime)}ms`);
+        console.log(`[PERF] Total time from challenge start: ${Math.round(performance.now() - startTime)}ms`);
         
         // Send the solution back to the server using ApiClient
         try {

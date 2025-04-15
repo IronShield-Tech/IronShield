@@ -189,44 +189,134 @@ workerScope.onmessage = async function(e) {
 
 // Function to load the WebAssembly module
 async function loadWasmModule() {
+    // Add timing info
+    const loadStart = performance.now();
+    let streamingStartTime, fetchEndTime, compileStartTime, compileEndTime;
+    let wasmInitStartTime, wasmInitEndTime;
+    
     try {
-        // Try to import the WASM module using absolute path
-        console.log(`Attempting to load WASM module from ${baseUrl}/ironshield_wasm.js`);
+        console.log(`[WASM-STREAM] Starting WASM module load at ${Math.round(loadStart)}ms since worker start`);
         
-        // Support both potential paths
-        let wasm;
+        // Determine the URLs for both WASM and JS files
+        const jsUrl = `${baseUrl}/ironshield_wasm.js`;
+        const wasmUrl = `${baseUrl}/ironshield_wasm_bg.wasm`;
+        
+        const jsUrlAlternative = `${baseUrl}/assets/wasm/ironshield_wasm.js`;
+        const wasmUrlAlternative = `${baseUrl}/assets/wasm/ironshield_wasm_bg.wasm`;
+        
+        // First, try to fetch the JS binding file to determine which URL pattern works
+        console.log(`[WASM-STREAM] Testing JS bindings path at ${jsUrl}`);
+        
+        let jsBindingUrl;
+        let wasmBinaryUrl;
+        
         try {
-            wasm = await import(`${baseUrl}/ironshield_wasm.js`);
-            console.log("Successfully loaded WASM from direct path");
+            // Check if the direct path is available by doing a HEAD request
+            const headStartTime = performance.now();
+            const testResponse = await fetch(jsUrl, { method: 'HEAD' });
+            console.log(`[WASM-STREAM] HEAD request completed in ${Math.round(performance.now() - headStartTime)}ms`);
+            
+            if (testResponse.ok) {
+                jsBindingUrl = jsUrl;
+                wasmBinaryUrl = wasmUrl;
+                console.log(`[WASM-STREAM] Using direct URLs for WASM files`);
+            } else {
+                throw new Error("Direct path not available");
+            }
         } catch (e) {
-            console.log("Failed to load WASM from direct path, trying with /assets/ prefix", e);
-            wasm = await import(`${baseUrl}/assets/wasm/ironshield_wasm.js`);
-            console.log("Successfully loaded WASM from /assets/wasm/ path");
+            console.log(`[WASM-STREAM] Direct path not available: ${e.message}, trying alternative paths`);
+            jsBindingUrl = jsUrlAlternative;
+            wasmBinaryUrl = wasmUrlAlternative;
+            console.log(`[WASM-STREAM] Using alternative URLs for WASM files`);
         }
+        
+        // Start loading the JS bindings
+        const jsStartTime = performance.now();
+        console.log(`[WASM-STREAM] Fetching JS bindings from ${jsBindingUrl}`);
+        const jsPromise = import(jsBindingUrl);
+        
+        // Immediately start streaming the WASM binary in parallel
+        streamingStartTime = performance.now();
+        console.log(`[WASM-STREAM] Streaming WASM binary from ${wasmBinaryUrl} at ${Math.round(streamingStartTime - loadStart)}ms`);
+        
+        // Create a more detailed fetch with timing info
+        const wasmFetch = fetch(wasmBinaryUrl)
+            .then(response => {
+                fetchEndTime = performance.now();
+                console.log(`[WASM-STREAM] WASM fetch headers received after ${Math.round(fetchEndTime - streamingStartTime)}ms`);
+                console.log(`[WASM-STREAM] Response type: ${response.type}, status: ${response.status}`);
+                
+                // Check for streaming-related headers
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                    if (['content-type', 'content-length', 'content-encoding', 'accept-ranges'].includes(key.toLowerCase())) {
+                        console.log(`[WASM-STREAM] ${key}: ${value}`);
+                    }
+                });
+                
+                return response;
+            })
+            .catch(err => {
+                console.error(`[WASM-STREAM] WASM fetch failed: ${err.message}`);
+                throw err;
+            });
+        
+        // Wait for JS module to load
+        console.log(`[WASM-STREAM] Waiting for JS bindings to load...`);
+        const jsLoadStartTime = performance.now();
+        const wasm = await jsPromise;
+        const jsLoadEndTime = performance.now();
+        console.log(`[WASM-STREAM] JS bindings loaded after ${Math.round(jsLoadEndTime - jsLoadStartTime)}ms`);
         
         wasmModule = wasm;
         
-        // Initialize the WASM module
-        console.log("Initializing WASM module");
+        // Now initialize the WASM module with streaming instantiation
+        console.log(`[WASM-STREAM] Starting WASM module initialization...`);
+        wasmInitStartTime = performance.now();
+        
+        // Call the default function, which should be able to use our streaming fetch
+        // if the browser supports WASM streaming instantiation
         await wasm.default();
-        console.log("WASM module initialized");
+        
+        wasmInitEndTime = performance.now();
+        const initDuration = Math.round(wasmInitEndTime - wasmInitStartTime);
+        console.log(`[WASM-STREAM] WASM module initialized in ${initDuration}ms`);
         
         // Check if threads are supported
         wasmThreaded = wasm.are_threads_supported();
         useWasm = true;
+        console.log(`[WASM-STREAM] WASM threading support: ${wasmThreaded}`);
         
         // If threads are supported, initialize the thread pool
         if (wasmThreaded) {
-            // Get the number of CPU cores to use (hardcoded to 4 for now)
-            const numThreads = 4;
+            // Use navigator.hardwareConcurrency but cap at a reasonable number
+            const maxThreads = 4;
+            const numThreads = Math.min(navigator.hardwareConcurrency || 2, maxThreads);
+            
             // Initialize the thread pool
+            const threadStartTime = performance.now();
+            console.log(`[WASM-STREAM] Initializing thread pool with ${numThreads} threads...`);
             await wasm.init_threads(numThreads);
-            console.log(`Initialized WASM thread pool with ${numThreads} threads`);
+            const threadEndTime = performance.now();
+            console.log(`[WASM-STREAM] Thread pool initialized in ${Math.round(threadEndTime - threadStartTime)}ms`);
         }
+        
+        const totalTime = performance.now() - loadStart;
+        console.log(`[WASM-STREAM] Total WASM load process completed in ${Math.round(totalTime)}ms`);
+        
+        // Log summary of timings
+        console.log(`[WASM-STREAM] Timing Summary:
+            - Total load time: ${Math.round(totalTime)}ms
+            - JS fetch/eval time: ${Math.round(jsLoadEndTime - jsLoadStartTime)}ms
+            - WASM fetch header time: ${fetchEndTime ? Math.round(fetchEndTime - streamingStartTime) : 'N/A'}ms
+            - WASM initialization time: ${Math.round(wasmInitEndTime - wasmInitStartTime)}ms
+            - Thread initialization: ${wasmThreaded ? Math.round(threadEndTime - threadStartTime) : 'N/A'}ms`);
         
         return true;
     } catch (error) {
-        console.warn('Failed to load WASM module:', error);
+        const errorTime = performance.now();
+        console.warn(`[WASM-STREAM] Failed to load WASM module after ${Math.round(errorTime - loadStart)}ms:`, error);
         useWasm = false;
         wasmThreaded = false;
         throw error;
@@ -236,8 +326,11 @@ async function loadWasmModule() {
 // Function to solve the PoW challenge using the threaded WASM implementation
 async function solveWithThreadedWasm(challenge, difficulty, workerId) {
     try {
-        // Number of threads to use (should match init_threads call)
-        const numThreads = 4;
+        // Use the same thread count calculation as in loadWasmModule
+        const maxThreads = 4;
+        const numThreads = Math.min(navigator.hardwareConcurrency || 2, maxThreads);
+        
+        console.log(`Worker #${workerId} using threaded WASM with ${numThreads} threads`);
         
         // Use the parallel WASM implementation
         const result = wasmModule.solve_pow_challenge_parallel(challenge, difficulty, numThreads);

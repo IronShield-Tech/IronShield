@@ -5,6 +5,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/challenge.css">
+    <!-- Preload WASM assets to start streaming early -->
+    <link rel="preload" href="/ironshield_wasm.js" as="script" crossorigin>
+    <link rel="preload" href="/ironshield_wasm_bg.wasm" as="fetch" crossorigin type="application/wasm">
+    <script>
+        // Track when the page starts loading
+        window.pageStartTime = performance.now();
+        
+        // Create performance observer to monitor resource loading
+        if (window.PerformanceObserver) {
+            const perfObserver = new PerformanceObserver((entries) => {
+                entries.getEntries().forEach(entry => {
+                    // Log all resource loads, focusing on our WASM files
+                    const url = entry.name.split('/').pop();
+                    if (url.includes('wasm')) {
+                        console.log(
+                            `Resource loaded: ${url} | ` +
+                            `Start: ${Math.round(entry.startTime)}ms | ` +
+                            `Duration: ${Math.round(entry.duration)}ms | ` +
+                            `Size: ${Math.round(entry.transferSize / 1024)}KB | ` +
+                            `Preload-initiated: ${entry.initiatorType === 'link'}`
+                        );
+                    }
+                });
+            });
+            
+            // Observe resource timing entries
+            perfObserver.observe({ entryTypes: ['resource'] });
+            console.log('Performance monitoring active');
+        }
+    </script>
 </head>
 <body>
     <div class="container">
