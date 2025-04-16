@@ -54,7 +54,7 @@ const WORKER_POOL_MANAGER_JS: &str = include_str!("../../assets/worker_pool_mana
 const API_CLIENT_JS: &str = include_str!("../../assets/api_client.js");
 
 // --- Constants ---
-const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
+const POW_DIFFICULTY: usize = 5; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
