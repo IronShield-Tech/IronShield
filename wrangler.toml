@@ -7,4 +7,4 @@ compatibility_flags = ["nodejs_compat"]
 command = "node build.js && cargo install -q worker-build && worker-build --release"
 
 [[routes]]
-pattern = "pow.ironshield.cloud/*"
+pattern = ["pow.ironshield.cloud/*"]
