@@ -196,29 +196,18 @@ async function solveChallenge() {
         
         // Send the solution back to the server using ApiClient
         try {
-            const responseHtml = await apiClient.submitSolution(
+            // Submit solution but we don't need the response HTML anymore
+            await apiClient.submitSolution(
                 challenge,
                 solution.nonce_str,
                 timestamp,
                 difficultyStr
             );
-            
-            // Render the response from the server
-            document.open();
-            
-            // Ensure the response includes DOCTYPE to avoid Quirks Mode
-            // Use a more robust check for DOCTYPE declaration that handles case and whitespace
-            let htmlToWrite = responseHtml;
-            if (!responseHtml.trim().match(/^\s*<!doctype\s+html\s*>/i)) {
-                const docType = '<!DOCTYPE html>\n';
-                htmlToWrite = docType + responseHtml;
-                console.log("Adding DOCTYPE declaration to response HTML to prevent Quirks Mode");
-            } else {
-                console.log("Response HTML already contains DOCTYPE declaration");
-            }
-            
-            document.write(htmlToWrite);
-            document.close();
+
+            // Instead of rendering the response, redirect the user
+            console.log("Challenge verification successful, redirecting to skip.ironshield.cloud...");
+            window.location.href = 'https://skip.ironshield.cloud';
+
         } catch (error) {
             // ApiClient throws an error if fetch fails or status is not ok
             console.error("Error submitting solution via ApiClient:", error);

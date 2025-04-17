@@ -5,4 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [build]
 command = "node build.js && cargo install -q worker-build && worker-build --release"
-routes = ["pow.ironshield.cloud/*"]
+[[routes]]
+pattern = "pow.ironshield.cloud/*"
+zone_name = "ironshield.cloud"
+custom_domain = true
