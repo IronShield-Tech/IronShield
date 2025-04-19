@@ -9,7 +9,7 @@ export class ApiClient {
      * @param {string} nonce_str - The solved nonce as a string.
      * @param {string} timestamp - The original timestamp string.
      * @param {string} difficultyStr - The difficulty level as a string.
-     * @returns {Promise<string>} A promise that resolves with the response body text (e.g., HTML) if successful.
+     * @returns {Promise<Object>} A promise that resolves with the parsed JSON response if successful.
      * @throws {Error} Throws an error if the fetch fails or the server response is not OK (status >= 400).
      */
     async submitSolution(challenge, nonce_str, timestamp, difficultyStr) {
@@ -27,7 +27,8 @@ export class ApiClient {
                     "X-IronShield-Nonce": nonce_str,
                     "X-IronShield-Timestamp": timestamp,
                     "X-IronShield-Difficulty": difficultyStr
-                }
+                },
+                credentials: 'include' // Include cookies in the request
             });
 
             if (!response.ok) {
@@ -38,8 +39,20 @@ export class ApiClient {
             }
 
             console.log("Server verification successful.");
-            // Return the response body text (likely HTML to render)
-            return await response.text();
+            
+            // Check if the response is JSON
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                // Parse and return the JSON response
+                const jsonResponse = await response.json();
+                console.log("Received JSON response:", jsonResponse);
+                return jsonResponse;
+            } else {
+                // Fallback to text response for backward compatibility
+                console.log("Received text response (not JSON)");
+                const textResponse = await response.text();
+                return { success: true, message: textResponse };
+            }
 
         } catch (error) {
             console.error("Error submitting solution:", error);

@@ -196,18 +196,32 @@ async function solveChallenge() {
         
         // Send the solution back to the server using ApiClient
         try {
-            // Submit solution but we don't need the response HTML anymore
-            await apiClient.submitSolution(
+            // Submit solution and get the JSON response
+            const response = await apiClient.submitSolution(
                 challenge,
                 solution.nonce_str,
                 timestamp,
                 difficultyStr
             );
 
-            // Instead of rendering the response, redirect the user
-            console.log("Challenge verification successful, redirecting to skip.ironshield.cloud...");
-            window.location.href = 'https://skip.ironshield.cloud';
-
+            // Check if we got a JSON response with redirectUrl
+            if (response && response.success) {
+                console.log("Challenge verification successful:", response.message);
+                
+                // If we have a redirect URL in the response, use it
+                if (response.redirectUrl) {
+                    console.log("Redirecting to", response.redirectUrl);
+                    window.location.href = response.redirectUrl;
+                } else {
+                    // Fallback redirect if somehow the URL is missing
+                    console.log("No redirect URL provided, using default");
+                    window.location.href = 'https://skip.ironshield.cloud';
+                }
+            } else {
+                // Handle unexpected response format
+                console.error("Unexpected server response format:", response);
+                uiManager.showError("Unexpected server response. Please refresh the page.");
+            }
         } catch (error) {
             // ApiClient throws an error if fetch fails or status is not ok
             console.error("Error submitting solution via ApiClient:", error);
