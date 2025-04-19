@@ -35,7 +35,7 @@ jobs:
         run: npm ci
         
       - name: Publish to Cloudflare
-        # Default behavior: runs build defined in wrangler.toml, then publishes
+        # Run Wrangler.toml build
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
