@@ -34,14 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Build Project
-        # Explicitly run the full build command needed before publishing
-        run: node build.js && cargo install -q worker-build && worker-build --release
-      
       - name: Publish to Cloudflare
+        # Default behavior: runs build defined in wrangler.toml, then publishes
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          # Tell the action to only publish, as build is done separately
-          command: publish 
+          accountId: ${{ secrets.CF_ACCOUNT_ID }} 
