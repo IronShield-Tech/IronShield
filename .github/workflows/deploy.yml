@@ -18,12 +18,15 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Setup Rust
+      - name: Setup Rust Nightly
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          # Use nightly toolchain for WASM threading support
+          toolchain: nightly 
           profile: minimal
           override: true
+          # Specify the target for the runner environment
+          target: x86_64-unknown-linux-gnu 
       
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
