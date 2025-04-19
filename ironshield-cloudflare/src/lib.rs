@@ -399,6 +399,7 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                 if verify_solution(&req) {
                     // Set a cookie for bypassing future challenges
                     // Return protected content if verification succeeds
+                    #[allow(unused_variables)]
                     let content = protected_content().await;
                     return add_cors_headers(Response::builder()
                         .status(StatusCode::OK) // Use 200 OK instead of 302 redirect
