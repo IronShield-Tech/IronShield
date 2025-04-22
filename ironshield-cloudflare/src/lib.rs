@@ -397,13 +397,18 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
             if has_pow_headers {
                 // Verify Proof of Work if verification headers are present
                 if verify_solution(&req) {
-                    // Set a cookie for bypassing future challenges
+                    // If verification is successful, create a response that sets the bypass cookie
+                    let cookie_value = format!(
+                        "{}={}; Max-Age=900; HttpOnly; Secure; Path=/; SameSite=Lax", // Added Max-Age=900 for 15 minutes
+                        BYPASS_COOKIE_NAME,
+                        BYPASS_TOKEN_VALUE // Still using the insecure test value for now
+                    );
                     // Return protected content if verification succeeds
                     #[allow(unused_variables)]
                     let content = protected_content().await;
                     return add_cors_headers(Response::builder()
                         .status(StatusCode::OK) // Use 200 OK instead of 302 redirect
-                        .header(header::SET_COOKIE, format!("{}={}; Path=/; SameSite=Lax", BYPASS_COOKIE_NAME, BYPASS_TOKEN_VALUE))
+                        .header(header::SET_COOKIE, cookie_value)
                         .header(header::CONTENT_TYPE, "application/json"), &headers)
                         .body(body::Body::from(format!("{{\"success\":true,\"message\":\"Verification successful.\",\"redirectUrl\":\"https://skip.ironshield.cloud\"}}")))
                         .map_err(|e| Error::RustError(format!("Failed to build response: {}", e)));
