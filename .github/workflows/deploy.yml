@@ -62,7 +62,19 @@ jobs:
               echo "wasm-pack found in cache."
           fi
         shell: bash
-      
+
+      - name: Install worker-build
+        # Only install if not found in cache
+        run: |
+          if ! command -v worker-build &> /dev/null
+          then
+              echo "worker-build not found in cache, installing..."
+              cargo install worker-build
+          else
+              echo "worker-build found in cache."
+          fi
+        shell: bash
+
       - name: Install dependencies
         # Use --prefer-offline if cache exists
         run: |
