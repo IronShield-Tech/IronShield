@@ -18,19 +18,60 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Setup Rust Nightly
+      - name: Cache node modules
+        id: cache-node-modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Setup Rust Nightly and Stable
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           profile: minimal
-          override: true
+          override: true # Still override to make nightly the default for wasm-pack step later
           target: x86_64-unknown-linux-gnu 
       
+      - name: Install Stable Toolchain
+        run: rustup toolchain install stable --profile minimal --target x86_64-unknown-linux-gnu
+
+      - name: Cache Cargo Dependencies & Build Artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/ # Cache the build target directory
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        # Only install if not found in cache
+        run: |
+          if ! command -v wasm-pack &> /dev/null
+          then
+              echo "wasm-pack not found in cache, installing..."
+              curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          else
+              echo "wasm-pack found in cache."
+          fi
+        shell: bash
       
       - name: Install dependencies
-        run: npm ci
+        # Use --prefer-offline if cache exists
+        run: |
+          if [[ "${{ steps.cache-node-modules.outputs.cache-hit }}" == "true" ]]; then
+            npm ci --prefer-offline
+          else
+            npm ci
+          fi
+        shell: bash
         
       - name: Publish to Cloudflare
         uses: cloudflare/wrangler-action@v3
