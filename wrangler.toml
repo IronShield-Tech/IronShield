@@ -4,7 +4,7 @@ compatibility_date = "2025-04-09"
 compatibility_flags = ["nodejs_compat"]
 
 [build]
-command = "node build.js && cargo install worker-build && WASM_OPT_ARGS='--enable-bulk-memory' worker-build --release"
+command = "node build.js && cargo install worker-build && WASM_OPT_ARGS='--enable-all' worker-build --release"
 [[routes]]
 pattern = "pow.ironshield.cloud"
 zone_name = "ironshield.cloud"
