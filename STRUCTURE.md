@@ -14,7 +14,7 @@ The core library contains shared functionality used by both the server-side and 
 
 ### 2. WASM Module (`ironshield-wasm`)
 
-The WebAssembly module exposes the core functionality to the browser:
+The WebAssembly module exposes the core functionalities to the browser:
 
 - Provides JavaScript bindings to the core library
 - Handles serialization/deserialization for JS interop
