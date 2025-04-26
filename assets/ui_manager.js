@@ -20,7 +20,7 @@ export class UIManager {
      */
     setStatus(text) {
         if (this.statusDiv) {
-            this.statusDiv.textContent = text;
+            // this.statusDiv.textContent = text; // Commented out to keep static text
         }
         const timestamp = Date.now() - this.startTime;
         this.statusHistory.push({ time: timestamp, text });
