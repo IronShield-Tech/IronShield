@@ -74,7 +74,7 @@ async function calculatePowSolution(challenge, difficulty, workerId, startNonce,
         }
         
         // Safety limit - each worker checks a different range
-        if (attempts > 1000000) {
+        if (attempts > 10000000) {
             throw new Error("Worker #" + workerId + " could not find solution within attempt limit");
         }
     }
