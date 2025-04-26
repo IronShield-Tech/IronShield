@@ -3,6 +3,9 @@ name = "ironshield"
 version = "0.1.0"
 edition = "2021"
 authors = [ "ebosspc <software2070@protonmail.com>" ]
+description = "Enterprise-Grade Edge-native L7 DDoS & Bot Firewall with Stateless PoW, Bot Fingerprinting, and Origin-Shielding Scraper Defense, Written in Rust"
+repository = "" # TODO: Add GitHub repository URL
+license = "BUSL-1.1" # Becomes Apache-2.0 after 2028-07-24
 
 [package.metadata.release]
 release = false
