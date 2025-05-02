@@ -17,14 +17,14 @@ pub fn solve_pow_challenge(challenge: &str, difficulty: usize) -> Result<JsValue
     
     // Get required number of leading zeros
     #[allow(unused_variables)]
-    let target_prefix = "0".repeat(difficulty);
+    let target_prefix: String = "0".repeat(difficulty);
     
     // Solve the challenge using our core library
     let (nonce, hash) = ironshield_core::find_solution(challenge, difficulty)
-        .map_err(|e| JsValue::from_str(&format!("Error solving challenge: {}", e)))?;
+        .map_err(|e: String| JsValue::from_str(&format!("Error solving challenge: {}", e)))?;
     
     // Create the solution result
-    let solution_result = SolutionResult {
+    let solution_result: SolutionResult = SolutionResult {
         nonce_str: nonce.to_string(), // Convert to string to avoid BigInt issues
         nonce,                         // Keep the u64 version for compatibility
         hash: hash.clone(),
