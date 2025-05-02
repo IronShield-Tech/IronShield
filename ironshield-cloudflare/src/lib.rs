@@ -75,9 +75,9 @@ fn generate_challenge_page(challenge_string: &str, timestamp: i64, headers: &axu
     console_log!("Issuing WebAssembly challenge with timestamp: {}", timestamp);
 
     // Create meta tags for all parameters
-    let difficulty_meta_tag = format!("<meta name=\"x-ironshield-difficulty\" content=\"{}\">", POW_DIFFICULTY);
-    let timestamp_meta_tag = format!("<meta name=\"x-ironshield-timestamp\" content=\"{}\">", timestamp);
-    let challenge_meta_tag = format!("<meta name=\"x-ironshield-challenge\" content=\"{}\">", challenge_string);
+    let difficulty_meta_tag: String = format!("<meta name=\"x-ironshield-difficulty\" content=\"{}\">", POW_DIFFICULTY);
+    let timestamp_meta_tag: String = format!("<meta name=\"x-ironshield-timestamp\" content=\"{}\">", timestamp);
+    let challenge_meta_tag: String = format!("<meta name=\"x-ironshield-challenge\" content=\"{}\">", challenge_string);
     
     // Replace placeholders in the template, and add our meta tags after the viewport meta
     let html_content = CHALLENGE_TEMPLATE
@@ -96,25 +96,25 @@ fn generate_challenge_page(challenge_string: &str, timestamp: i64, headers: &axu
         .header(TIMESTAMP_HEADER, timestamp.to_string())
         .header(CHALLENGE_HEADER, challenge_string), headers)
         .body(body::Body::from(html_content))
-        .map_err(|e| Error::RustError(format!("Failed to build challenge response: {}", e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to build challenge response: {}", e)))
 }
 
 // Function to verify the submitted solution
 fn verify_solution(req: &Request<worker::Body>) -> bool {
     console_log!("Verifying checksum...");
 
-    let headers = req.headers();
-    let challenge_opt = headers.get(CHALLENGE_HEADER).and_then(|v| v.to_str().ok());
-    let nonce_opt = headers.get(NONCE_HEADER).and_then(|v| v.to_str().ok());
-    let timestamp_opt = headers.get(TIMESTAMP_HEADER).and_then(|v| v.to_str().ok());
-    let difficulty_opt = headers.get(DIFFICULTY_HEADER).and_then(|v| v.to_str().ok());
+    let headers: &http::HeaderMap = req.headers();
+    let challenge_opt: Option<&str> = headers.get(CHALLENGE_HEADER).and_then(|v| v.to_str().ok());
+    let nonce_opt: Option<&str> = headers.get(NONCE_HEADER).and_then(|v| v.to_str().ok());
+    let timestamp_opt: Option<&str> = headers.get(TIMESTAMP_HEADER).and_then(|v| v.to_str().ok());
+    let difficulty_opt: Option<&str> = headers.get(DIFFICULTY_HEADER).and_then(|v| v.to_str().ok());
 
     match (challenge_opt, nonce_opt, timestamp_opt, difficulty_opt) {
         (Some(challenge), Some(nonce_str), Some(timestamp_str), Some(difficulty_str)) => {
             // 1. Verify timestamp freshness
             match timestamp_str.parse::<i64>() {
                  Ok(timestamp_millis) => {
-                    let now_millis = Utc::now().timestamp_millis();
+                    let now_millis: i64 = Utc::now().timestamp_millis();
                     if now_millis.saturating_sub(timestamp_millis) > MAX_CHALLENGE_AGE_SECONDS * 1000 {
                         console_log!("Challenge timestamp expired. Now: {}, Provided: {}", now_millis, timestamp_millis);
                         return false;
@@ -132,7 +132,7 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
             }
 
             // 2. Parse difficulty
-            let difficulty = match difficulty_str.parse::<usize>() {
+            let difficulty: usize = match difficulty_str.parse::<usize>() {
                 Ok(d) => d,
                 Err(_) => {
                     console_log!("Invalid difficulty format.");
@@ -141,7 +141,7 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
             };
 
             // 3. Verify solution using our core library
-            let result = ironshield_core::verify_solution(challenge, nonce_str, difficulty);
+            let result: bool = ironshield_core::verify_solution(challenge, nonce_str, difficulty);
             
             if result {
                 console_log!("Checksum verification successful!");
@@ -175,7 +175,7 @@ async fn serve_wasm_file() -> Result<Response<body::Body>> {
         // This is important for streaming as compressed responses need to be fully downloaded first
         .header(header::CONTENT_ENCODING, "identity")
         .body(body::Body::from(WASM_BINARY.to_vec()))
-        .map_err(|e| Error::RustError(format!("Failed to serve WebAssembly: {}", e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to serve WebAssembly: {}", e)))
 }
 
 // Function to serve the JavaScript bindings for the WebAssembly module
@@ -190,7 +190,7 @@ async fn serve_wasm_js_file() -> Result<Response<body::Body>> {
         // Add CORS headers
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .body(body::Body::from(WASM_JS_BINDINGS.to_vec()))
-        .map_err(|e| Error::RustError(format!("Failed to serve WebAssembly JS bindings: {}", e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to serve WebAssembly JS bindings: {}", e)))
 }
 
 // Function to serve the challenge CSS file
@@ -203,7 +203,7 @@ async fn serve_challenge_css() -> Result<Response<body::Body>> {
         // Add cache control headers
         .header(header::CACHE_CONTROL, "public, max-age=3600") 
         .body(body::Body::from(CHALLENGE_CSS))
-        .map_err(|e| Error::RustError(format!("Failed to serve challenge CSS: {}", e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to serve challenge CSS: {}", e)))
 }
 
 // Function to serve the PoW worker JavaScript file
@@ -216,7 +216,7 @@ async fn serve_pow_worker_js() -> Result<Response<body::Body>> {
         // Add cache control headers
         .header(header::CACHE_CONTROL, "public, max-age=3600") 
         .body(body::Body::from(POW_WORKER_JS))
-        .map_err(|e| Error::RustError(format!("Failed to serve PoW worker: {}", e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to serve PoW worker: {}", e)))
 }
 
 // Function to serve the WASM PoW worker JavaScript file
@@ -229,7 +229,7 @@ async fn serve_wasm_pow_worker_js() -> Result<Response<body::Body>> {
         // Add cache control headers
         .header(header::CACHE_CONTROL, "public, max-age=3600") 
         .body(body::Body::from(WASM_POW_WORKER_JS))
-        .map_err(|e| Error::RustError(format!("Failed to serve WASM PoW worker: {}", e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to serve WASM PoW worker: {}", e)))
 }
 
 // Function to serve the main challenge JavaScript file
@@ -260,21 +260,21 @@ fn serve_javascript_file(log_name: &str, content: &'static str) -> Result<Respon
         .header(header::CONTENT_TYPE, "application/javascript; charset=utf-8")
         .header(header::CACHE_CONTROL, "public, max-age=3600")
         .body(body::Body::from(content))
-        .map_err(|e| Error::RustError(format!("Failed to serve {}: {}", log_name, e)))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to serve {}: {}", log_name, e)))
 }
 
 // Helper function to handle CORS for responses
 fn add_cors_headers(builder: axum::http::response::Builder, request_headers: &axum::http::HeaderMap) -> axum::http::response::Builder {
-    let mut builder = builder;
+    let mut builder: http::response::Builder = builder;
     
     // Get the origin header from the request
-    let origin = request_headers
+    let origin: &str = request_headers
         .get(header::ORIGIN)
-        .and_then(|v| v.to_str().ok())
+        .and_then(|v: &http::HeaderValue| v.to_str().ok())
         .unwrap_or("");
     
     // Check if the origin is allowed
-    let is_allowed_origin = ALLOWED_ORIGINS.contains(&origin) || origin.is_empty();
+    let is_allowed_origin: bool = ALLOWED_ORIGINS.contains(&origin) || origin.is_empty();
     
     // Set appropriate Access-Control-Allow-Origin header
     if is_allowed_origin && !origin.is_empty() {
@@ -362,7 +362,7 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                 .header(header::LOCATION, "https://skip.ironshield.cloud")
                 .header(header::CONTENT_TYPE, "text/plain"), &headers)
                 .body(body::Body::from("Redirecting to approved endpoint..."))
-                .map_err(|e| Error::RustError(format!("Failed to build response: {}", e)));
+                .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)));
         }
     }
 
@@ -380,7 +380,7 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                         .header(header::LOCATION, "https://skip.ironshield.cloud")
                         .header(header::CONTENT_TYPE, "text/plain"), &headers)
                         .body(body::Body::from("Redirecting to approved endpoint..."))
-                        .map_err(|e| Error::RustError(format!("Failed to build response: {}", e)));
+                        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)));
                 }
             }
         }
@@ -398,7 +398,7 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                 // Verify Proof of Work if verification headers are present
                 if verify_solution(&req) {
                     // If verification is successful, create a response that sets the bypass cookie
-                    let cookie_value = format!(
+                    let cookie_value: String = format!(
                         "{}={}; Max-Age=900; HttpOnly; Secure; Path=/; SameSite=Lax", // Added Max-Age=900 for 15 minutes
                         BYPASS_COOKIE_NAME,
                         BYPASS_TOKEN_VALUE // Still using the insecure test value for now
@@ -411,20 +411,20 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                         .header(header::SET_COOKIE, cookie_value)
                         .header(header::CONTENT_TYPE, "application/json"), &headers)
                         .body(body::Body::from(format!("{{\"success\":true,\"message\":\"Verification successful.\",\"redirectUrl\":\"https://skip.ironshield.cloud\"}}")))
-                        .map_err(|e| Error::RustError(format!("Failed to build response: {}", e)));
+                        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)));
                 } else {
                     // Reject if verification fails
                     return add_cors_headers(Response::builder()
                         .status(StatusCode::FORBIDDEN)
                         .header(header::CONTENT_TYPE, "text/plain"), &headers)
                         .body(body::Body::from("Proof of Work verification failed. Please try again."))
-                        .map_err(|e| Error::RustError(format!("Failed to build response: {}", e)));
+                        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)));
                 }
             }
             // No verification headers - issue challenge
             // Generate a fresh challenge
-            let challenge = hex::encode(&rand::random::<[u8; 16]>());
-            let timestamp_ms = Utc::now().timestamp_millis();
+            let challenge: String = hex::encode(&rand::random::<[u8; 16]>());
+            let timestamp_ms: i64 = Utc::now().timestamp_millis();
             
             // Return the challenge page
             return generate_challenge_page(&challenge, timestamp_ms, &headers);
@@ -436,7 +436,7 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                 .status(StatusCode::OK)
                 .header(header::ACCESS_CONTROL_MAX_AGE, "86400"), &headers) // 24 hours
                 .body(body::Body::from(""))
-                .map_err(|e| Error::RustError(format!("Failed to build OPTIONS response: {}", e)));
+                .map_err(|e: http::Error| Error::RustError(format!("Failed to build OPTIONS response: {}", e)));
         },
         // Reject any other methods
         _ => {
@@ -444,7 +444,7 @@ pub async fn main(req: Request<worker::Body>, _env: Env, _ctx: worker::Context) 
                 .status(StatusCode::METHOD_NOT_ALLOWED)
                 .header(header::CONTENT_TYPE, "text/plain"), &headers)
                 .body(body::Body::from("Method not allowed"))
-                .map_err(|e| Error::RustError(format!("Failed to build response: {}", e)))
+                .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)))
         }
     }
 }
