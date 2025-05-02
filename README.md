@@ -4,9 +4,9 @@
 
 ### What is IronShield?
 
-IronShield is a powerful, Rust-based Layer 7 (L7) DDoS and bot protection solution specifically built for APIs, crypto projects, Web3 platforms, self-hosted applications, and startups that demand enterprise-level security but lack enterprise-level budgets. This project originated from the need for effective DDoS protection that respects user privacy, as many traditional security solutions inadvertently block legitimate users accessing services via privacy tools like VPNs and Tor. Primarily designed as a solution to be effortlessly deployed on Cloudflare®'s infrastructure, IronShield provides robust protection without relying exclusively on Cloudflare®'s built-in bot detection mechanisms, ensuring compatibility with privacy-focused networks like Tor and VPNs, essential for cryptocurrency and privacy-first services.
+IronShield is a powerful, Rust-based Layer 7 (L7) DDoS and bot protection solution specifically built for APIs, crypto projects, Web3 platforms, self-hosted applications, and startups that demand enterprise-level security but lack enterprise-level budgets. This project originated from the need for effective DDoS protection that respects user privacy, as many traditional security solutions inadvertently block legitimate users accessing services via privacy tools like VPNs and Tor. Primarily designed as a solution to be effortlessly deployed on Cloudflare or any other CDN's infrastructure, IronShield provides robust protection without relying exclusively on heuristic-only solutions like Cloudflare's built-in bot detection mechanisms, ensuring compatibility with privacy-focused networks like Tor and VPNs, essential for cryptocurrency and privacy-first services.
 
-IronShield delivers top-tier protection without the heavy costs associated with traditional enterprise solutions like Cloudflare® Enterprise and provides a scalable infrastructure solution instead of the common janky self-rolled options currently prevalent.
+IronShield delivers top-tier protection without the heavy costs associated with traditional enterprise solutions like Cloudflare Enterprise and provides a scalable infrastructure solution instead of the common janky self-rolled options currently prevalent.
 
 ### The Problem
 
@@ -15,7 +15,7 @@ You've built an innovative, valuable service—but now you're under attack:
 - Your APIs are overwhelmed by thousands of malicious requests per second.
 - Attackers easily bypass basic rate limiting and firewalls.
 - You're suffering from Layer 7 DDoS attacks targeting your application's logic, not just network bandwidth.
-- Cloudflare® Enterprise protection is prohibitively expensive (often thousands per month).
+- Cloudflare Enterprise protection is prohibitively expensive.
 - Downtime directly costs your business users, revenue, and credibility.
 
 Open-source alternatives often fall short:
@@ -62,7 +62,7 @@ IronShield's approach is fundamentally different: it creates a computational bar
 
 IronShield modernizes and drastically improves upon the conceptual foundation set by solutions like [PoW-Shield](https://github.com/RuiSiang/PoW-Shield.git), leveraging Rust and WASM performance, memory safety, and concurrency to provide sophisticated protection that's faster, safer, and dramatically more efficient.
 
-Additionally, IronShield aims to be the "Vercel for Cloudflare®"—providing a user-friendly, no-code, 1-click security solution. While Cloudflare® offers powerful tools for technical users, IronShield bridges the gap, delivering streamlined, accessible cybersecurity to everyone.
+Additionally, IronShield aims to be the "Vercel for Cloudflare"—providing a user-friendly, no-code, 1-click security solution. While Cloudflare offers powerful tools for technical users, IronShield bridges the gap, delivering streamlined, accessible cybersecurity to everyone.
 
 Unlike previous solutions like PoW-Shield, which required running directly on your server and only filtering traffic after it had already reached your infrastructure, IronShield is specifically designed to operate on the edge. This means malicious traffic is intercepted and blocked before it ever touches your backend, greatly reducing the risk and resource drain on your systems.
 
