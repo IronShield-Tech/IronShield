@@ -168,7 +168,7 @@ While theoretical concerns about botnets using specialized hardware like GPU's a
 2. **Technical Barriers:** Utilizing victim GPUs requires specialized malware capabilities beyond most botnet operators
 3. **Operational Complexity:** Managing GPU resources remotely adds detection risk and development overhead
 
-Typical botnets lack the specialized hardware or software engineering capabilities to efficiently bypass the computational barriers. Standard CPU-based botnets face the full economic cost of the PoW system. Even with extremely challenging PoW difficulty settings that a specialized ASIC/GPU attack could theorectically bypass, the aforementioned barriers would be quite good at preventing those. Something like a nation-state threat actor could conceivably pull this off despite the incentives not to, but if someone is being DDoS'd by a nation-state this software not working is probably the least of their problems.
+Typical botnets lack the specialized hardware or software engineering capabilities to efficiently bypass the computational barriers. Standard CPU-based botnets face the full economic cost of the PoW system. Even with extremely challenging PoW difficulty settings that a specialized ASIC/GPU attack could theorectically bypass, the aforementioned barriers would be quite good at preventing those.
 
 **Multi-Layered Defense:**
 IronShield doesn't rely solely on computational challenges. Our heuristic bot classification system:
