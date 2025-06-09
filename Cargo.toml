@@ -12,7 +12,8 @@ release = false
 
 # https://github.com/rustwasm/wasm-pack/issues/1247
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-Oz']
+wasm-opt = false
+#wasm-opt = ['-Oz'] holy fuck bro
 
 [lib]
 crate-type = ["cdylib"]

@@ -11,6 +11,6 @@
   "author": "ebosspc <software2070@protonmail.com>",
   "license": "BSL",
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.19.1"
   }
-} 
+}
