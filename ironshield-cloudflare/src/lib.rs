@@ -205,7 +205,7 @@ async fn serve_wasm_file() -> Result<Response<body::Body>> {
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         // Add streaming-friendly headers
         .header(header::ACCEPT_RANGES, "bytes")
-        // Add content-encoding header to indicate no compression
+        // Add a content-encoding header to indicate no compression
         // This is important for streaming as compressed responses need to be fully downloaded first
         .header(header::CONTENT_ENCODING, "identity")
         .body(body::Body::from(WASM_BINARY.to_vec()))
@@ -472,7 +472,7 @@ pub async fn main(
                     #[allow(unused_variables)]
                     let content = protected_content().await;
                     return add_cors_headers(Response::builder()
-                        .status(StatusCode::OK) // Use 200 OK instead of 302 redirect
+                        .status(StatusCode::OK) // Use 200 OK instead of a 302 redirect.
                         .header(header::SET_COOKIE, cookie_value)
                         .header(header::CONTENT_TYPE, "application/json"), &headers)
                         .body(body::Body::from(format!("{{\"success\":true,\"message\":\"Verification successful.\",\"redirectUrl\":\"https://skip.ironshield.cloud\"}}")))
@@ -527,7 +527,7 @@ pub async fn main(
     }
 }
 
-// Utility functions
+/// Utility functions
 mod utils {
     pub fn set_panic_hook() {
         // When the `console_error_panic_hook` feature is enabled, we can call the
