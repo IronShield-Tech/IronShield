@@ -601,6 +601,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ironshield-cloudflare"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-macros",
+ "chrono",
+ "console_error_panic_hook",
+ "getrandom",
+ "hex",
+ "http",
+ "ironshield-core",
+ "js-sys",
+ "rand",
+ "serde",
+ "serde-wasm-bindgen 0.6.5",
+ "serde_json",
+ "sha2",
+ "wasm-bindgen",
+ "web-sys",
+ "worker",
+]
+
+[[package]]
 name = "ironshield-core"
 version = "0.1.0"
 dependencies = [

@@ -1,3 +1,5 @@
+mod bypass;
+
 use axum::{
     body::{self},
     http::{header, Method as AxumMethod, Request, Response, StatusCode},
@@ -7,6 +9,8 @@ use hex;
 use ironshield_core;
 use rand;
 use worker::*;
+
+use bypass::{check_bypass_cookie, check_bypass_token};
 
 // Using placeholders during development to avoid linter errors
 // These will be correctly populated at runtime by wrangler
@@ -60,14 +64,15 @@ const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
 const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty";
 const MAX_CHALLENGE_AGE_SECONDS: i64 = 60; // How long a challenge is valid
-const BYPASS_TOKEN_HEADER: &str = "X-Ironshield-Token";
-const BYPASS_TOKEN_VALUE: &str = "test_approved";
-const BYPASS_COOKIE_NAME: &str = "ironshield_token";
+pub const BYPASS_TOKEN_HEADER: &str = "X-Ironshield-Token";
+pub const BYPASS_TOKEN_VALUE: &str = "test_approved";
+pub const BYPASS_COOKIE_NAME: &str = "ironshield_token";
 const ALLOWED_ORIGINS: [&str; 3] = [
     "http://localhost:8787",
     "https://skip.ironshield.cloud",
     "https://ironshield.cloud",
 ];
+
 
 // Simple placeholder for successful access
 async fn protected_content() -> &'static str {
@@ -305,7 +310,7 @@ fn serve_javascript_file(log_name: &str, content: &'static str) -> Result<Respon
 }
 
 // Helper function to handle CORS for responses
-fn add_cors_headers(
+pub fn add_cors_headers(
     builder: axum::http::response::Builder,
     request_headers: &axum::http::HeaderMap,
 ) -> axum::http::response::Builder {
@@ -385,80 +390,9 @@ async fn handle_asset_request(path: &str) -> Option<Result<Response<body::Body>>
             Some(serve_api_client_js().await)
         }
         // Return None if not an asset request
-        _ => None
+        _ => None,
     }
 }
-
-/// Function to check for bypass token in headers
-fn check_bypass_token(headers: &axum::http::HeaderMap) -> Option<Result<Response<body::Body>>> {
-    let token = headers.get(BYPASS_TOKEN_HEADER)?;
-    
-    if token
-        .to_str()
-        .map(|t| t == BYPASS_TOKEN_VALUE)
-        .unwrap_or(false)
-    {
-        return None;
-    }
-
-    console_log!("Bypass token found and valid, skipping PoW verification");
-    // Perform a direct redirect to skip.ironshield.cloud
-    Some(
-        add_cors_headers(
-            Response::builder()
-                .status(StatusCode::FOUND) // 302 Found for redirect
-                .header(header::LOCATION, "https://skip.ironshield.cloud")
-                .header(header::CONTENT_TYPE, "text/plain"),
-            &headers,
-        )
-            .body(body::Body::from("Redirecting to approved endpoint..."))
-            .map_err(|e: http::Error| {
-                Error::RustError(format!("Failed to build response: {}", e))
-            })
-    )
-
-}
-
-/// Function to check for bypass cookie
-fn check_bypass_cookie(headers: &axum::http::HeaderMap) -> Option<Result<Response<body::Body>>> {
-    let      cookie_header = headers.get(header::COOKIE)?;
-    let         cookie_str = cookie_header.to_str().ok()?;
-    let cookies: Vec<&str> = cookie_str.split(';').collect();
-    
-    for cookie in cookies {
-        let cookie_parts: Vec<&str> = cookie.trim().split('=').collect();
-        
-        if cookie_parts.len() != 2 {
-            continue;
-        }
-
-        if cookie_parts[0] != BYPASS_COOKIE_NAME {
-            continue;
-        }
-
-        if cookie_parts[1] != BYPASS_TOKEN_VALUE {
-            continue;
-        }
-
-        console_log!("Bypass cookie found and valid, skipping PoW verification");
-        // Perform a direct redirect to skip.ironshield.cloud
-        return Some(
-            add_cors_headers(
-                Response::builder()
-                    .status(StatusCode::FOUND) // 302 Found for redirect
-                    .header(header::LOCATION, "https://skip.ironshield.cloud")
-                    .header(header::CONTENT_TYPE, "text/plain"),
-                &headers,
-            )
-                .body(body::Body::from("Redirecting to approved endpoint..."))
-                .map_err(|e: http::Error| {
-                    Error::RustError(format!("Failed to build response: {}", e))
-                })
-        );
-    }
-    None
-}
-
 
 // Main Worker entry point
 #[event(fetch)]
@@ -469,21 +403,21 @@ pub async fn main(
 ) -> Result<Response<body::Body>> {
     // Optionally, set a panic hook for better error messages in the browser console.
     utils::set_panic_hook();
-    
+
     if let Some(asset_response) = handle_asset_request(req.uri().path()).await {
         return asset_response;
     }
-    
+
     let headers = req.headers();
-    
+
     if let Some(response) = check_bypass_token(&headers) {
         return response;
     }
-    
+
     if let Some(response) = check_bypass_cookie(&headers) {
         return response;
     }
-    
+
     // Existing logic for handling GET requests (challenge/verification)
     let has_pow_headers = headers.contains_key(CHALLENGE_HEADER)
         && headers.contains_key(NONCE_HEADER)
