@@ -53,5 +53,6 @@ codegen-units = 1
 [workspace]
 members = [
     "ironshield-core",
+    "ironshield-cloudflare",
     "ironshield-wasm"
 ]
