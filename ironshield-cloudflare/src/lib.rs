@@ -342,6 +342,124 @@ fn add_cors_headers(
     builder
 }
 
+// Function to handle asset requests
+async fn handle_asset_request(path: &str) -> Option<Result<Response<body::Body>>> {
+    match path {
+        // WASM files
+        "/ironshield_wasm_bg.wasm" | "/assets/wasm/ironshield_wasm_bg.wasm" => {
+            console_log!("Request for WebAssembly binary received.");
+            Some(serve_wasm_file().await)
+        }
+        "/ironshield_wasm.js" | "/assets/wasm/ironshield_wasm.js" => {
+            console_log!("Request for WebAssembly JS bindings received.");
+            Some(serve_wasm_js_file().await)
+        }
+        // CSS
+        "/challenge.css" | "/assets/challenge.css" => {
+            console_log!("Request for challenge CSS received.");
+            Some(serve_challenge_css().await)
+        }
+        // JavaScript files
+        "/pow_worker.js" | "/assets/pow_worker.js" => {
+            console_log!("Request for PoW worker JS received.");
+            Some(serve_pow_worker_js().await)
+        }
+        "/wasm_pow_worker.js" | "/assets/wasm_pow_worker.js" => {
+            console_log!("Request for WASM PoW worker JS received.");
+            Some(serve_wasm_pow_worker_js().await)
+        }
+        "/challenge_main.js" | "/assets/challenge_main.js" => {
+            console_log!("Request for main challenge JS received.");
+            Some(serve_challenge_main_js().await)
+        }
+        "/ui_manager.js" | "/assets/ui_manager.js" => {
+            console_log!("Request for UI manager JS received.");
+            Some(serve_ui_manager_js().await)
+        }
+        "/worker_pool_manager.js" | "/assets/worker_pool_manager.js" => {
+            console_log!("Request for Worker pool manager JS received.");
+            Some(serve_worker_pool_manager_js().await)
+        }
+        "/api_client.js" | "/assets/api_client.js" => {
+            console_log!("Request for API client JS received.");
+            Some(serve_api_client_js().await)
+        }
+        // Return None if not an asset request
+        _ => None
+    }
+}
+
+/// Function to check for bypass token in headers
+fn check_bypass_token(headers: &axum::http::HeaderMap) -> Option<Result<Response<body::Body>>> {
+    let token = headers.get(BYPASS_TOKEN_HEADER)?;
+    
+    if token
+        .to_str()
+        .map(|t| t == BYPASS_TOKEN_VALUE)
+        .unwrap_or(false)
+    {
+        return None;
+    }
+
+    console_log!("Bypass token found and valid, skipping PoW verification");
+    // Perform a direct redirect to skip.ironshield.cloud
+    Some(
+        add_cors_headers(
+            Response::builder()
+                .status(StatusCode::FOUND) // 302 Found for redirect
+                .header(header::LOCATION, "https://skip.ironshield.cloud")
+                .header(header::CONTENT_TYPE, "text/plain"),
+            &headers,
+        )
+            .body(body::Body::from("Redirecting to approved endpoint..."))
+            .map_err(|e: http::Error| {
+                Error::RustError(format!("Failed to build response: {}", e))
+            })
+    )
+
+}
+
+/// Function to check for bypass cookie
+fn check_bypass_cookie(headers: &axum::http::HeaderMap) -> Option<Result<Response<body::Body>>> {
+    let      cookie_header = headers.get(header::COOKIE)?;
+    let         cookie_str = cookie_header.to_str().ok()?;
+    let cookies: Vec<&str> = cookie_str.split(';').collect();
+    
+    for cookie in cookies {
+        let cookie_parts: Vec<&str> = cookie.trim().split('=').collect();
+        
+        if cookie_parts.len() != 2 {
+            continue;
+        }
+
+        if cookie_parts[0] != BYPASS_COOKIE_NAME {
+            continue;
+        }
+
+        if cookie_parts[1] != BYPASS_TOKEN_VALUE {
+            continue;
+        }
+
+        console_log!("Bypass cookie found and valid, skipping PoW verification");
+        // Perform a direct redirect to skip.ironshield.cloud
+        return Some(
+            add_cors_headers(
+                Response::builder()
+                    .status(StatusCode::FOUND) // 302 Found for redirect
+                    .header(header::LOCATION, "https://skip.ironshield.cloud")
+                    .header(header::CONTENT_TYPE, "text/plain"),
+                &headers,
+            )
+                .body(body::Body::from("Redirecting to approved endpoint..."))
+                .map_err(|e: http::Error| {
+                    Error::RustError(format!("Failed to build response: {}", e))
+                })
+        );
+    }
+    None
+}
+
+
 // Main Worker entry point
 #[event(fetch)]
 pub async fn main(
@@ -349,108 +467,23 @@ pub async fn main(
     _env: Env,
     _ctx: worker::Context,
 ) -> Result<Response<body::Body>> {
-    // Optionally set panic hook for better error messages in browser console
+    // Optionally, set a panic hook for better error messages in the browser console.
     utils::set_panic_hook();
-
-    // Handle request for assets first
-    match req.uri().path() {
-        // WASM files
-        "/ironshield_wasm_bg.wasm" | "/assets/wasm/ironshield_wasm_bg.wasm" => {
-            console_log!("Request for WebAssembly binary received.");
-            return serve_wasm_file().await;
-        }
-        "/ironshield_wasm.js" | "/assets/wasm/ironshield_wasm.js" => {
-            console_log!("Request for WebAssembly JS bindings received.");
-            return serve_wasm_js_file().await;
-        }
-
-        // CSS
-        "/challenge.css" | "/assets/challenge.css" => {
-            console_log!("Request for challenge CSS received.");
-            return serve_challenge_css().await;
-        }
-
-        // JavaScript files
-        "/pow_worker.js" | "/assets/pow_worker.js" => {
-            console_log!("Request for PoW worker JS received.");
-            return serve_pow_worker_js().await;
-        }
-        "/wasm_pow_worker.js" | "/assets/wasm_pow_worker.js" => {
-            console_log!("Request for WASM PoW worker JS received.");
-            return serve_wasm_pow_worker_js().await;
-        }
-        "/challenge_main.js" | "/assets/challenge_main.js" => {
-            console_log!("Request for main challenge JS received.");
-            return serve_challenge_main_js().await;
-        }
-        "/ui_manager.js" | "/assets/ui_manager.js" => {
-            console_log!("Request for UI manager JS received.");
-            return serve_ui_manager_js().await;
-        }
-        "/worker_pool_manager.js" | "/assets/worker_pool_manager.js" => {
-            console_log!("Request for Worker pool manager JS received.");
-            return serve_worker_pool_manager_js().await;
-        }
-        "/api_client.js" | "/assets/api_client.js" => {
-            console_log!("Request for API client JS received.");
-            return serve_api_client_js().await;
-        }
-        // Fall through if not an asset request
-        _ => {}
+    
+    if let Some(asset_response) = handle_asset_request(req.uri().path()).await {
+        return asset_response;
     }
-
-    // Check for the bypass token header first
+    
     let headers = req.headers();
-    if let Some(token) = headers.get(BYPASS_TOKEN_HEADER) {
-        if token
-            .to_str()
-            .map(|t| t == BYPASS_TOKEN_VALUE)
-            .unwrap_or(false)
-        {
-            console_log!("Bypass token found and valid, skipping PoW verification");
-            // Perform a direct redirect to skip.ironshield.cloud
-            return add_cors_headers(
-                Response::builder()
-                    .status(StatusCode::FOUND) // 302 Found for redirect
-                    .header(header::LOCATION, "https://skip.ironshield.cloud")
-                    .header(header::CONTENT_TYPE, "text/plain"),
-                &headers,
-            )
-            .body(body::Body::from("Redirecting to approved endpoint..."))
-            .map_err(|e: http::Error| {
-                Error::RustError(format!("Failed to build response: {}", e))
-            });
-        }
+    
+    if let Some(response) = check_bypass_token(&headers) {
+        return response;
     }
-
-    // Also check for the bypass cookie
-    if let Some(cookie_header) = headers.get(header::COOKIE) {
-        if let Ok(cookie_str) = cookie_header.to_str() {
-            let cookies: Vec<&str> = cookie_str.split(';').collect();
-            for cookie in cookies {
-                let cookie_parts: Vec<&str> = cookie.trim().split('=').collect();
-                if cookie_parts.len() == 2
-                    && cookie_parts[0] == BYPASS_COOKIE_NAME
-                    && cookie_parts[1] == BYPASS_TOKEN_VALUE
-                {
-                    console_log!("Bypass cookie found and valid, skipping PoW verification");
-                    // Perform a direct redirect to skip.ironshield.cloud
-                    return add_cors_headers(
-                        Response::builder()
-                            .status(StatusCode::FOUND) // 302 Found for redirect
-                            .header(header::LOCATION, "https://skip.ironshield.cloud")
-                            .header(header::CONTENT_TYPE, "text/plain"),
-                        &headers,
-                    )
-                    .body(body::Body::from("Redirecting to approved endpoint..."))
-                    .map_err(|e: http::Error| {
-                        Error::RustError(format!("Failed to build response: {}", e))
-                    });
-                }
-            }
-        }
+    
+    if let Some(response) = check_bypass_cookie(&headers) {
+        return response;
     }
-
+    
     // Existing logic for handling GET requests (challenge/verification)
     let has_pow_headers = headers.contains_key(CHALLENGE_HEADER)
         && headers.contains_key(NONCE_HEADER)
