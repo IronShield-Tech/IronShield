@@ -1,7 +1,8 @@
 mod bypass;
-mod difficulty;
-mod cors;
 mod challenge;
+mod cors;
+mod difficulty;
+mod http_handler;
 
 use axum::{
     body::{self},
@@ -10,8 +11,12 @@ use axum::{
 use worker::*;
 
 use bypass::{check_bypass_cookie, check_bypass_token};
-use challenge::{handle_solution_verification, issue_new_challenge, CHALLENGE_CSS};
+use challenge::CHALLENGE_CSS;
 use cors::add_cors_headers;
+use http_handler::{
+    handle_get_request, handle_options_request, handle_unsupported_method,
+    has_proof_of_work_headers,
+};
 
 // Using placeholders during development to avoid linter errors,
 // These will be correctly populated at runtime by wrangler
@@ -63,12 +68,6 @@ const ALLOWED_ORIGINS: [&str; 3] = [
     "https://skip.ironshield.cloud",
     "https://ironshield.cloud",
 ];
-
-
-// Simple placeholder for successful access
-async fn protected_content() -> &'static str {
-    "Access Granted: Checksum Approved."
-}
 
 // Function to serve the WebAssembly binary
 async fn serve_wasm_file() -> Result<Response<body::Body>> {
@@ -229,61 +228,9 @@ async fn handle_asset_request(path: &str) -> Option<Result<Response<body::Body>>
     }
 }
 
-/// Function to handle GET requests (challenge/verification)
-async fn handle_get_request(
-    req: &Request<Body>,
-    headers: &http::HeaderMap,
-    has_pow_headers: bool,
-) -> Result<Response<body::Body>> {
-    if !has_pow_headers {
-        issue_new_challenge(headers).await
-    } else {
-        handle_solution_verification(req, headers).await
-    }
-}
-
-/// Function to handle OPTIONS requests (CORS preflight)
-fn handle_options_request(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
-    console_log!("Handling OPTIONS request for CORS preflight");
-    add_cors_headers(
-        Response::builder()
-            .status(StatusCode::OK)
-            .header(header::ACCESS_CONTROL_MAX_AGE, "86400"),
-        &headers,
-    ) // 24 hours
-        .body(body::Body::from(""))
-        .map_err(|e: http::Error| {
-            Error::RustError(format!("Failed to build OPTIONS response: {}", e))
-        })
-}
-
-/// Function to handle unsupported HTTP methods
-fn handle_unsupported_method(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
-    add_cors_headers(
-        Response::builder()
-            .status(StatusCode::METHOD_NOT_ALLOWED)
-            .header(header::CONTENT_TYPE, "text/plain"),
-        &headers,
-    )
-        .body(body::Body::from("Method not allowed"))
-        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)))
-}
-
-/// Function to check if a request has Proof of Work headers
-fn has_proof_of_work_headers(headers: &http::HeaderMap) -> bool {
-    headers.contains_key(CHALLENGE_HEADER)
-        && headers.contains_key(NONCE_HEADER)
-        && headers.contains_key(TIMESTAMP_HEADER)
-        && headers.contains_key(DIFFICULTY_HEADER)
-}
-
 /// Main Worker entry point
 #[event(fetch)]
-pub async fn main(
-    req: Request<Body>,
-    _env: Env,
-    _ctx: Context,
-) -> Result<Response<body::Body>> {
+pub async fn main(req: Request<Body>, _env: Env, _ctx: Context) -> Result<Response<body::Body>> {
     // Optionally, set a panic hook for better error messages in the browser console.
     utils::set_panic_hook();
 

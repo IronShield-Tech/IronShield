@@ -3,7 +3,6 @@ use chrono::Utc;
 use http::{header, Request, Response, StatusCode};
 use worker::{console_log, Body, Error};
 use crate::{
-    protected_content, 
     BYPASS_COOKIE_NAME, 
     BYPASS_TOKEN_VALUE, 
     CHALLENGE_HEADER, 
@@ -12,13 +11,21 @@ use crate::{
     TIMESTAMP_HEADER
 };
 use crate::cors::add_cors_headers;
+use crate::http_handler::protected_content;
 
+/// Serves a multithreaded challenge template for WebAssembly if supported,
+/// denoted by the ` not ` function.
 #[cfg(not(target_arch = "wasm32"))]
 const        CHALLENGE_TEMPLATE:  &str = "";
+/// Serves the corresponding challenge page for multithreaded WebAssembly 
+/// if supported, denoted by the `not` function.
 #[cfg(not(target_arch = "wasm32"))]
 pub const         CHALLENGE_CSS:  &str = "";
+/// Serves a challenge template that is not multithreaded if not supported,
+/// denoted by the lack of the `not` function.
 #[cfg(target_arch = "wasm32")]
 pub const    CHALLENGE_TEMPLATE:  &str = include_str!("../../assets/challenge_template.html");
+/// Serves the corresponding challenge page for the legacy challenge template.
 #[cfg(target_arch = "wasm32")]
 pub const         CHALLENGE_CSS:  &str = include_str!("../../assets/challenge.css");
 
@@ -27,14 +34,14 @@ const            POW_DIFFICULTY: usize = 4;
 /// How long a challenge is valid.
 const MAX_CHALLENGE_AGE_SECONDS:   i64 = 60;
 
-/// Function to issue a new challenge
+/// Function to issue a new challenge.
 pub(crate) async fn issue_new_challenge(headers: &http::HeaderMap) -> worker::Result<Response<body::Body>> {
     let challenge: String = hex::encode(&rand::random::<[u8; 16]>());
     let timestamp_ms: i64 = Utc::now().timestamp_millis();
     generate_challenge_page(&challenge, timestamp_ms, &headers)
 }
 
-/// Function to generate the challenge page that uses WebAssembly
+/// Function to generate the challenge page that uses WebAssembly.
 pub(crate) fn generate_challenge_page(
     challenge_string: &str,
     timestamp: i64,
@@ -59,12 +66,12 @@ pub(crate) fn generate_challenge_page(
         challenge_string
     );
 
-    // Replace placeholders in the template and add our meta-tags after the viewport meta
+    // Replace placeholders in the template and add our meta-tags after the viewport meta.
     let html_content = CHALLENGE_TEMPLATE
         .replace("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
                  &format!("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    {}\n    {}\n    {}",
                           difficulty_meta_tag, timestamp_meta_tag, challenge_meta_tag))
-        // Keep these replacements for header names
+        // Keep these replacements for header names.
         .replace("X-Challenge", CHALLENGE_HEADER)
         .replace("X-Nonce", NONCE_HEADER)
         .replace("X-Timestamp", TIMESTAMP_HEADER);
@@ -84,7 +91,7 @@ pub(crate) fn generate_challenge_page(
         })
 }
 
-/// Function to verify the submitted solution
+/// Function to verify the submitted solution.
 pub(crate) fn verify_solution(req: &Request<Body>) -> bool {
     console_log!("Verifying checksum...");
 
@@ -152,7 +159,7 @@ pub(crate) fn verify_solution(req: &Request<Body>) -> bool {
     }
 }
 
-/// Function to handle solution verification and return the appropriate response
+/// Function to handle solution verification and return the appropriate response.
 pub(crate) async fn handle_solution_verification(
     req: &Request<Body>,
     headers: &http::HeaderMap,
