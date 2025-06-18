@@ -1,4 +1,5 @@
 mod bypass;
+mod difficulty;
 
 use axum::{
     body::{self},
