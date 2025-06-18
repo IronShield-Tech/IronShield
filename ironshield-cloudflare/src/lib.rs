@@ -1,17 +1,17 @@
 mod bypass;
 mod difficulty;
+mod cors;
+mod challenge;
 
 use axum::{
     body::{self},
     http::{header, Method as AxumMethod, Request, Response, StatusCode},
 };
-use chrono::Utc;
-use hex;
-use ironshield_core;
-use rand;
 use worker::*;
 
 use bypass::{check_bypass_cookie, check_bypass_token};
+use challenge::{handle_solution_verification, issue_new_challenge, CHALLENGE_CSS};
+use cors::add_cors_headers;
 
 // Using placeholders during development to avoid linter errors,
 // These will be correctly populated at runtime by wrangler
@@ -19,10 +19,6 @@ use bypass::{check_bypass_cookie, check_bypass_token};
 const WASM_BINARY: &[u8] = &[];
 #[cfg(not(target_arch = "wasm32"))]
 const WASM_JS_BINDINGS: &[u8] = &[];
-#[cfg(not(target_arch = "wasm32"))]
-const CHALLENGE_TEMPLATE: &str = "";
-#[cfg(not(target_arch = "wasm32"))]
-const CHALLENGE_CSS: &str = "";
 #[cfg(not(target_arch = "wasm32"))]
 const POW_WORKER_JS: &str = "";
 #[cfg(not(target_arch = "wasm32"))]
@@ -42,10 +38,6 @@ const WASM_BINARY: &[u8] = include_bytes!("../../assets/wasm/ironshield_wasm_bg.
 #[cfg(target_arch = "wasm32")]
 const WASM_JS_BINDINGS: &[u8] = include_bytes!("../../assets/wasm/ironshield_wasm.js");
 #[cfg(target_arch = "wasm32")]
-const CHALLENGE_TEMPLATE: &str = include_str!("../../assets/challenge_template.html");
-#[cfg(target_arch = "wasm32")]
-const CHALLENGE_CSS: &str = include_str!("../../assets/challenge.css");
-#[cfg(target_arch = "wasm32")]
 const POW_WORKER_JS: &str = include_str!("../../assets/pow_worker.js");
 #[cfg(target_arch = "wasm32")]
 const WASM_POW_WORKER_JS: &str = include_str!("../../assets/wasm_pow_worker.js");
@@ -59,12 +51,10 @@ const WORKER_POOL_MANAGER_JS: &str = include_str!("../../assets/worker_pool_mana
 const API_CLIENT_JS: &str = include_str!("../../assets/api_client.js");
 
 // --- Constants ---
-const POW_DIFFICULTY: usize = 4; // Number of leading zeros required in the hash
 const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
 const NONCE_HEADER: &str = "X-IronShield-Nonce";
 const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
 const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty";
-const MAX_CHALLENGE_AGE_SECONDS: i64 = 60; // How long a challenge is valid
 pub const BYPASS_TOKEN_HEADER: &str = "X-Ironshield-Token";
 pub const BYPASS_TOKEN_VALUE: &str = "test_approved";
 pub const BYPASS_COOKIE_NAME: &str = "ironshield_token";
@@ -78,124 +68,6 @@ const ALLOWED_ORIGINS: [&str; 3] = [
 // Simple placeholder for successful access
 async fn protected_content() -> &'static str {
     "Access Granted: Checksum Approved."
-}
-
-// Function to generate the challenge page that uses WebAssembly
-fn generate_challenge_page(
-    challenge_string: &str,
-    timestamp: i64,
-    headers: &http::HeaderMap,
-) -> Result<Response<body::Body>> {
-    console_log!(
-        "Issuing WebAssembly challenge with timestamp: {}",
-        timestamp
-    );
-
-    // Create meta-tags for all parameters
-    let difficulty_meta_tag: String = format!(
-        "<meta name=\"x-ironshield-difficulty\" content=\"{}\">",
-        POW_DIFFICULTY
-    );
-    let timestamp_meta_tag: String = format!(
-        "<meta name=\"x-ironshield-timestamp\" content=\"{}\">",
-        timestamp
-    );
-    let challenge_meta_tag: String = format!(
-        "<meta name=\"x-ironshield-challenge\" content=\"{}\">",
-        challenge_string
-    );
-
-    // Replace placeholders in the template and add our meta-tags after the viewport meta
-    let html_content = CHALLENGE_TEMPLATE
-        .replace("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
-                &format!("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    {}\n    {}\n    {}", 
-                         difficulty_meta_tag, timestamp_meta_tag, challenge_meta_tag))
-        // Keep these replacements for header names
-        .replace("X-Challenge", CHALLENGE_HEADER)
-        .replace("X-Nonce", NONCE_HEADER)
-        .replace("X-Timestamp", TIMESTAMP_HEADER);
-
-    add_cors_headers(
-        Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "text/html")
-            .header(DIFFICULTY_HEADER, POW_DIFFICULTY.to_string())
-            .header(TIMESTAMP_HEADER, timestamp.to_string())
-            .header(CHALLENGE_HEADER, challenge_string),
-        headers,
-    )
-    .body(body::Body::from(html_content))
-    .map_err(|e: http::Error| {
-        Error::RustError(format!("Failed to build challenge response: {}", e))
-    })
-}
-
-// Function to verify the submitted solution
-fn verify_solution(req: &Request<Body>) -> bool {
-    console_log!("Verifying checksum...");
-
-    let headers: &http::HeaderMap = req.headers();
-    let challenge_opt: Option<&str> = headers.get(CHALLENGE_HEADER).and_then(|v| v.to_str().ok());
-    let nonce_opt: Option<&str> = headers.get(NONCE_HEADER).and_then(|v| v.to_str().ok());
-    let timestamp_opt: Option<&str> = headers.get(TIMESTAMP_HEADER).and_then(|v| v.to_str().ok());
-    let difficulty_opt: Option<&str> = headers.get(DIFFICULTY_HEADER).and_then(|v| v.to_str().ok());
-
-    match (challenge_opt, nonce_opt, timestamp_opt, difficulty_opt) {
-        (Some(challenge), Some(nonce_str), Some(timestamp_str), Some(difficulty_str)) => {
-            // 1. Verify timestamp freshness
-            match timestamp_str.parse::<i64>() {
-                Ok(timestamp_millis) => {
-                    let now_millis: i64 = Utc::now().timestamp_millis();
-                    if now_millis.saturating_sub(timestamp_millis)
-                        > MAX_CHALLENGE_AGE_SECONDS * 1000
-                    {
-                        console_log!(
-                            "Challenge timestamp expired. Now: {}, Provided: {}",
-                            now_millis,
-                            timestamp_millis
-                        );
-                        return false;
-                    }
-                    // Optionally check if the timestamp is too far in the future as well?
-                    // if timestamp_millis > now_millis + 5000 { // e.g., 5 seconds tolerance
-                    //     console_log!("Challenge timestamp is in the future.");
-                    //     return false;
-                    // }
-                }
-                Err(_) => {
-                    console_log!(
-                        "Invalid timestamp format (expected Unix ms). Received: {}",
-                        timestamp_str
-                    );
-                    return false;
-                }
-            }
-
-            // 2. Parse difficulty
-            let difficulty: usize = match difficulty_str.parse::<usize>() {
-                Ok(d) => d,
-                Err(_) => {
-                    console_log!("Invalid difficulty format.");
-                    return false;
-                }
-            };
-
-            // 3. Verify the solution using our core library
-            let result: bool = ironshield_core::verify_solution(challenge, nonce_str, difficulty);
-
-            if result {
-                console_log!("Checksum verification successful!");
-                true
-            } else {
-                console_log!("Checksum verification failed.");
-                false
-            }
-        }
-        _ => {
-            console_log!("Missing required PoW headers.");
-            false // Missing headers
-        }
-    }
 }
 
 // Function to serve the WebAssembly binary
@@ -310,44 +182,6 @@ fn serve_javascript_file(log_name: &str, content: &'static str) -> Result<Respon
         .map_err(|e: http::Error| Error::RustError(format!("Failed to serve {}: {}", log_name, e)))
 }
 
-// Helper function to handle CORS for responses
-pub fn add_cors_headers(
-    builder: http::response::Builder,
-    request_headers: &http::HeaderMap,
-) -> http::response::Builder {
-    let mut builder: http::response::Builder = builder;
-
-    // Get the origin header from the request
-    let origin: &str = request_headers
-        .get(header::ORIGIN)
-        .and_then(|v: &http::HeaderValue| v.to_str().ok())
-        .unwrap_or("");
-
-    // Check if the origin is allowed
-    let is_allowed_origin: bool = ALLOWED_ORIGINS.contains(&origin) || origin.is_empty();
-
-    // Set the appropriate Access-Control-Allow-Origin header
-    if is_allowed_origin && !origin.is_empty() {
-        builder = builder.header(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin);
-    } else {
-        // Fallback to wildcard if no origin is specified, or it's not in our allowed list
-        builder = builder.header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-    }
-
-    // Add other CORS headers
-    builder = builder
-        .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, OPTIONS")
-        .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, X-IronShield-Challenge, X-IronShield-Nonce, X-IronShield-Timestamp, X-IronShield-Difficulty, X-Ironshield-Token")
-        .header(header::VARY, "Origin"); // Important for caching
-
-    // Only add a credential header if we have a specific origin (not wildcard)
-    if is_allowed_origin && !origin.is_empty() {
-        builder = builder.header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
-    }
-
-    builder
-}
-
 // Function to handle asset requests
 async fn handle_asset_request(path: &str) -> Option<Result<Response<body::Body>>> {
     match path {
@@ -393,61 +227,6 @@ async fn handle_asset_request(path: &str) -> Option<Result<Response<body::Body>>
         // Return None if not an asset request
         _ => None,
     }
-}
-
-/// Function to issue a new challenge
-async fn issue_new_challenge(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
-    let challenge: String = hex::encode(&rand::random::<[u8; 16]>());
-    let timestamp_ms: i64 = Utc::now().timestamp_millis();
-    generate_challenge_page(&challenge, timestamp_ms, &headers)
-}
-
-/// Function to handle solution verification and return the appropriate response
-async fn handle_solution_verification(
-    req: &Request<Body>,
-    headers: &http::HeaderMap,
-) -> Result<Response<body::Body>> {
-    // Early return for failed verification
-    if !verify_solution(&req) {
-        let response = add_cors_headers(
-            Response::builder()
-                .status(StatusCode::FORBIDDEN)
-                .header(header::CONTENT_TYPE, "text/plain"),
-            &headers,
-        )
-            .body(body::Body::from(
-                "Proof of Work verification failed. Please try again.",
-            ));
-
-        return response.map_err(|e: http::Error| {
-            Error::RustError(format!("Failed to build response: {}", e))
-        });
-    }
-
-    // Verification successful - prepare success response
-    let cookie_value = format!(
-        "{}={}; Max-Age=900; HttpOnly; Secure; Path=/; SameSite=Lax",
-        BYPASS_COOKIE_NAME,
-        BYPASS_TOKEN_VALUE
-    );
-
-    #[allow(unused_variables)]
-    let content = protected_content().await;
-
-    let response = add_cors_headers(
-        Response::builder()
-            .status(StatusCode::OK)
-            .header(header::SET_COOKIE, cookie_value)
-            .header(header::CONTENT_TYPE, "application/json"),
-        &headers,
-    )
-        .body(body::Body::from(
-            "{\"success\":true,\"message\":\"Verification successful.\",\"redirectUrl\":\"https://skip.ironshield.cloud\"}"
-        ));
-
-    response.map_err(|e: http::Error| {
-        Error::RustError(format!("Failed to build response: {}", e))
-    })
 }
 
 /// Function to handle GET requests (challenge/verification)
