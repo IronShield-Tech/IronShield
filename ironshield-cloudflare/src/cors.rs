@@ -68,7 +68,7 @@ pub fn add_cors_headers(
         .unwrap_or("");
 
     // Check if the origin is allowed.
-    let is_allowed_origin: bool = crate::ALLOWED_ORIGINS.contains(&origin) || origin.is_empty();
+    let is_allowed_origin: bool = ALLOWED_ORIGINS.contains(&origin) || origin.is_empty();
 
     // Set the appropriate Access-Control-Allow-Origin header.
     if is_allowed_origin && !origin.is_empty() {

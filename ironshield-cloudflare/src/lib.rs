@@ -27,11 +27,6 @@ const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty";
 pub const BYPASS_TOKEN_HEADER: &str = "X-Ironshield-Token";
 pub const BYPASS_TOKEN_VALUE: &str = "test_approved";
 pub const BYPASS_COOKIE_NAME: &str = "ironshield_token";
-const ALLOWED_ORIGINS: [&str; 3] = [
-    "http://localhost:8787",
-    "https://skip.ironshield.cloud",
-    "https://ironshield.cloud",
-];
 
 /// Main Worker entry point
 #[event(fetch)]
