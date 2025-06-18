@@ -13,7 +13,7 @@ use worker::*;
 
 use bypass::{check_bypass_cookie, check_bypass_token};
 
-// Using placeholders during development to avoid linter errors
+// Using placeholders during development to avoid linter errors,
 // These will be correctly populated at runtime by wrangler
 #[cfg(not(target_arch = "wasm32"))]
 const WASM_BINARY: &[u8] = &[];
@@ -36,7 +36,7 @@ const WORKER_POOL_MANAGER_JS: &str = "";
 #[cfg(not(target_arch = "wasm32"))]
 const API_CLIENT_JS: &str = "";
 
-// For builds with wrangler - fixed paths with correct relative paths
+// For builds with wrangler, fixed paths with correct relative paths
 #[cfg(target_arch = "wasm32")]
 const WASM_BINARY: &[u8] = include_bytes!("../../assets/wasm/ironshield_wasm_bg.wasm");
 #[cfg(target_arch = "wasm32")]
@@ -84,14 +84,14 @@ async fn protected_content() -> &'static str {
 fn generate_challenge_page(
     challenge_string: &str,
     timestamp: i64,
-    headers: &axum::http::HeaderMap,
+    headers: &http::HeaderMap,
 ) -> Result<Response<body::Body>> {
     console_log!(
         "Issuing WebAssembly challenge with timestamp: {}",
         timestamp
     );
 
-    // Create meta tags for all parameters
+    // Create meta-tags for all parameters
     let difficulty_meta_tag: String = format!(
         "<meta name=\"x-ironshield-difficulty\" content=\"{}\">",
         POW_DIFFICULTY
@@ -105,7 +105,7 @@ fn generate_challenge_page(
         challenge_string
     );
 
-    // Replace placeholders in the template, and add our meta tags after the viewport meta
+    // Replace placeholders in the template and add our meta-tags after the viewport meta
     let html_content = CHALLENGE_TEMPLATE
         .replace("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
                 &format!("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    {}\n    {}\n    {}", 
@@ -131,7 +131,7 @@ fn generate_challenge_page(
 }
 
 // Function to verify the submitted solution
-fn verify_solution(req: &Request<worker::Body>) -> bool {
+fn verify_solution(req: &Request<Body>) -> bool {
     console_log!("Verifying checksum...");
 
     let headers: &http::HeaderMap = req.headers();
@@ -156,7 +156,7 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
                         );
                         return false;
                     }
-                    // Optionally check if timestamp is too far in the future as well?
+                    // Optionally check if the timestamp is too far in the future as well?
                     // if timestamp_millis > now_millis + 5000 { // e.g., 5 seconds tolerance
                     //     console_log!("Challenge timestamp is in the future.");
                     //     return false;
@@ -180,7 +180,7 @@ fn verify_solution(req: &Request<worker::Body>) -> bool {
                 }
             };
 
-            // 3. Verify solution using our core library
+            // 3. Verify the solution using our core library
             let result: bool = ironshield_core::verify_solution(challenge, nonce_str, difficulty);
 
             if result {
@@ -211,7 +211,7 @@ async fn serve_wasm_file() -> Result<Response<body::Body>> {
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         // Add streaming-friendly headers
         .header(header::ACCEPT_RANGES, "bytes")
-        // Add content-encoding header to indicate no compression
+        // Add a content-encoding header to indicate no compression
         // This is important for streaming as compressed responses need to be fully downloaded first
         .header(header::CONTENT_ENCODING, "identity")
         .body(body::Body::from(WASM_BINARY.to_vec()))
@@ -291,7 +291,7 @@ async fn serve_worker_pool_manager_js() -> Result<Response<body::Body>> {
     serve_javascript_file("Worker pool manager JS", WORKER_POOL_MANAGER_JS)
 }
 
-// Function to serve the API Client JavaScript file
+// Function to serve the API-Client JavaScript file
 async fn serve_api_client_js() -> Result<Response<body::Body>> {
     serve_javascript_file("API client JS", API_CLIENT_JS)
 }
@@ -312,9 +312,9 @@ fn serve_javascript_file(log_name: &str, content: &'static str) -> Result<Respon
 
 // Helper function to handle CORS for responses
 pub fn add_cors_headers(
-    builder: axum::http::response::Builder,
-    request_headers: &axum::http::HeaderMap,
-) -> axum::http::response::Builder {
+    builder: http::response::Builder,
+    request_headers: &http::HeaderMap,
+) -> http::response::Builder {
     let mut builder: http::response::Builder = builder;
 
     // Get the origin header from the request
@@ -326,11 +326,11 @@ pub fn add_cors_headers(
     // Check if the origin is allowed
     let is_allowed_origin: bool = ALLOWED_ORIGINS.contains(&origin) || origin.is_empty();
 
-    // Set appropriate Access-Control-Allow-Origin header
+    // Set the appropriate Access-Control-Allow-Origin header
     if is_allowed_origin && !origin.is_empty() {
         builder = builder.header(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin);
     } else {
-        // Fallback to wildcard if no origin is specified or it's not in our allowed list
+        // Fallback to wildcard if no origin is specified, or it's not in our allowed list
         builder = builder.header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
     }
 
@@ -340,7 +340,7 @@ pub fn add_cors_headers(
         .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, X-IronShield-Challenge, X-IronShield-Nonce, X-IronShield-Timestamp, X-IronShield-Difficulty, X-Ironshield-Token")
         .header(header::VARY, "Origin"); // Important for caching
 
-    // Only add credentials header if we have a specific origin (not wildcard)
+    // Only add a credential header if we have a specific origin (not wildcard)
     if is_allowed_origin && !origin.is_empty() {
         builder = builder.header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
     }
@@ -395,12 +395,115 @@ async fn handle_asset_request(path: &str) -> Option<Result<Response<body::Body>>
     }
 }
 
-// Main Worker entry point
+/// Function to issue a new challenge
+async fn issue_new_challenge(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
+    let challenge: String = hex::encode(&rand::random::<[u8; 16]>());
+    let timestamp_ms: i64 = Utc::now().timestamp_millis();
+    generate_challenge_page(&challenge, timestamp_ms, &headers)
+}
+
+/// Function to handle solution verification and return the appropriate response
+async fn handle_solution_verification(
+    req: &Request<Body>,
+    headers: &http::HeaderMap,
+) -> Result<Response<body::Body>> {
+    // Early return for failed verification
+    if !verify_solution(&req) {
+        let response = add_cors_headers(
+            Response::builder()
+                .status(StatusCode::FORBIDDEN)
+                .header(header::CONTENT_TYPE, "text/plain"),
+            &headers,
+        )
+            .body(body::Body::from(
+                "Proof of Work verification failed. Please try again.",
+            ));
+
+        return response.map_err(|e: http::Error| {
+            Error::RustError(format!("Failed to build response: {}", e))
+        });
+    }
+
+    // Verification successful - prepare success response
+    let cookie_value = format!(
+        "{}={}; Max-Age=900; HttpOnly; Secure; Path=/; SameSite=Lax",
+        BYPASS_COOKIE_NAME,
+        BYPASS_TOKEN_VALUE
+    );
+
+    #[allow(unused_variables)]
+    let content = protected_content().await;
+
+    let response = add_cors_headers(
+        Response::builder()
+            .status(StatusCode::OK)
+            .header(header::SET_COOKIE, cookie_value)
+            .header(header::CONTENT_TYPE, "application/json"),
+        &headers,
+    )
+        .body(body::Body::from(
+            "{\"success\":true,\"message\":\"Verification successful.\",\"redirectUrl\":\"https://skip.ironshield.cloud\"}"
+        ));
+
+    response.map_err(|e: http::Error| {
+        Error::RustError(format!("Failed to build response: {}", e))
+    })
+}
+
+/// Function to handle GET requests (challenge/verification)
+async fn handle_get_request(
+    req: &Request<Body>,
+    headers: &http::HeaderMap,
+    has_pow_headers: bool,
+) -> Result<Response<body::Body>> {
+    if !has_pow_headers {
+        issue_new_challenge(headers).await
+    } else {
+        handle_solution_verification(req, headers).await
+    }
+}
+
+/// Function to handle OPTIONS requests (CORS preflight)
+fn handle_options_request(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
+    console_log!("Handling OPTIONS request for CORS preflight");
+    add_cors_headers(
+        Response::builder()
+            .status(StatusCode::OK)
+            .header(header::ACCESS_CONTROL_MAX_AGE, "86400"),
+        &headers,
+    ) // 24 hours
+        .body(body::Body::from(""))
+        .map_err(|e: http::Error| {
+            Error::RustError(format!("Failed to build OPTIONS response: {}", e))
+        })
+}
+
+/// Function to handle unsupported HTTP methods
+fn handle_unsupported_method(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
+    add_cors_headers(
+        Response::builder()
+            .status(StatusCode::METHOD_NOT_ALLOWED)
+            .header(header::CONTENT_TYPE, "text/plain"),
+        &headers,
+    )
+        .body(body::Body::from("Method not allowed"))
+        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)))
+}
+
+/// Function to check if a request has Proof of Work headers
+fn has_proof_of_work_headers(headers: &http::HeaderMap) -> bool {
+    headers.contains_key(CHALLENGE_HEADER)
+        && headers.contains_key(NONCE_HEADER)
+        && headers.contains_key(TIMESTAMP_HEADER)
+        && headers.contains_key(DIFFICULTY_HEADER)
+}
+
+/// Main Worker entry point
 #[event(fetch)]
 pub async fn main(
-    req: Request<worker::Body>,
+    req: Request<Body>,
     _env: Env,
-    _ctx: worker::Context,
+    _ctx: Context,
 ) -> Result<Response<body::Body>> {
     // Optionally, set a panic hook for better error messages in the browser console.
     utils::set_panic_hook();
@@ -419,79 +522,14 @@ pub async fn main(
         return response;
     }
 
-    // Existing logic for handling GET requests (challenge/verification)
-    let has_pow_headers = headers.contains_key(CHALLENGE_HEADER)
-        && headers.contains_key(NONCE_HEADER)
-        && headers.contains_key(TIMESTAMP_HEADER)
-        && headers.contains_key(DIFFICULTY_HEADER);
+    // Check for Proof of Work headers
+    let has_pow_headers = has_proof_of_work_headers(&headers);
 
+    // Route based on HTTP method
     match *req.method() {
-        AxumMethod::GET => {
-            if has_pow_headers {
-                // Verify Proof of Work if verification headers are present
-                if verify_solution(&req) {
-                    // If verification is successful, create a response that sets the bypass cookie
-                    let cookie_value: String = format!(
-                        "{}={}; Max-Age=900; HttpOnly; Secure; Path=/; SameSite=Lax", // Added Max-Age=900 for 15 minutes
-                        BYPASS_COOKIE_NAME,
-                        BYPASS_TOKEN_VALUE // Still using the insecure test value for now
-                    );
-                    // Return protected content if verification succeeds
-                    #[allow(unused_variables)]
-                    let content = protected_content().await;
-                    return add_cors_headers(Response::builder()
-                        .status(StatusCode::OK) // Use 200 OK instead of 302 redirect
-                        .header(header::SET_COOKIE, cookie_value)
-                        .header(header::CONTENT_TYPE, "application/json"), &headers)
-                        .body(body::Body::from(format!("{{\"success\":true,\"message\":\"Verification successful.\",\"redirectUrl\":\"https://skip.ironshield.cloud\"}}")))
-                        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e)));
-                } else {
-                    // Reject if verification fails
-                    return add_cors_headers(
-                        Response::builder()
-                            .status(StatusCode::FORBIDDEN)
-                            .header(header::CONTENT_TYPE, "text/plain"),
-                        &headers,
-                    )
-                    .body(body::Body::from(
-                        "Proof of Work verification failed. Please try again.",
-                    ))
-                    .map_err(|e: http::Error| {
-                        Error::RustError(format!("Failed to build response: {}", e))
-                    });
-                }
-            }
-            // No verification headers - issue challenge
-            // Generate a fresh challenge
-            let challenge: String = hex::encode(&rand::random::<[u8; 16]>());
-            let timestamp_ms: i64 = Utc::now().timestamp_millis();
-
-            // Return the challenge page
-            return generate_challenge_page(&challenge, timestamp_ms, &headers);
-        }
-        AxumMethod::OPTIONS => {
-            // Handle CORS preflight requests
-            console_log!("Handling OPTIONS request for CORS preflight");
-            return add_cors_headers(
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header(header::ACCESS_CONTROL_MAX_AGE, "86400"),
-                &headers,
-            ) // 24 hours
-            .body(body::Body::from(""))
-            .map_err(|e: http::Error| {
-                Error::RustError(format!("Failed to build OPTIONS response: {}", e))
-            });
-        }
-        // Reject any other methods
-        _ => add_cors_headers(
-            Response::builder()
-                .status(StatusCode::METHOD_NOT_ALLOWED)
-                .header(header::CONTENT_TYPE, "text/plain"),
-            &headers,
-        )
-        .body(body::Body::from("Method not allowed"))
-        .map_err(|e: http::Error| Error::RustError(format!("Failed to build response: {}", e))),
+        AxumMethod::GET => handle_get_request(&req, &headers, has_pow_headers).await,
+        AxumMethod::OPTIONS => handle_options_request(&headers),
+        _ => handle_unsupported_method(&headers),
     }
 }
 
