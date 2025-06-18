@@ -1,6 +1,4 @@
-use hex;
 use ironshield_core;
-use sha2::{Digest, Sha256};
 use wasm_bindgen::prelude::*;
 
 /// Support for threading in WASM
