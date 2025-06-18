@@ -4,12 +4,8 @@ use axum::{
 };
 use worker::*;
 
-use crate::{
-    add_cors_headers,
-    BYPASS_TOKEN_HEADER,
-    BYPASS_TOKEN_VALUE,
-    BYPASS_COOKIE_NAME
-};
+use crate::add_cors_headers;
+use crate::constant::{BYPASS_COOKIE_NAME, BYPASS_TOKEN_HEADER, BYPASS_TOKEN_VALUE};
 
 /// Create a redirect response to `skip.ironshield.cloud`.
 fn create_redirect_response(headers: &http::HeaderMap) -> Result<Response<body::Body>> {
