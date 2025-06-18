@@ -4,6 +4,7 @@ mod cors;
 mod difficulty;
 mod http_handler;
 mod asset;
+mod constant;
 
 use axum::{
     body::{self},
@@ -18,15 +19,6 @@ use http_handler::{
     handle_get_request, handle_options_request, handle_unsupported_method,
     has_proof_of_work_headers,
 };
-
-// --- Constants ---
-const CHALLENGE_HEADER: &str = "X-IronShield-Challenge";
-const NONCE_HEADER: &str = "X-IronShield-Nonce";
-const TIMESTAMP_HEADER: &str = "X-IronShield-Timestamp";
-const DIFFICULTY_HEADER: &str = "X-IronShield-Difficulty";
-pub const BYPASS_TOKEN_HEADER: &str = "X-Ironshield-Token";
-pub const BYPASS_TOKEN_VALUE: &str = "test_approved";
-pub const BYPASS_COOKIE_NAME: &str = "ironshield_token";
 
 /// Main Worker entry point
 #[event(fetch)]

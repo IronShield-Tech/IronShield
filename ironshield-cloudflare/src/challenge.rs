@@ -2,16 +2,9 @@ use axum::body;
 use chrono::Utc;
 use http::{header, Request, Response, StatusCode};
 use worker::{console_log, Body, Error};
-use crate::{
-    BYPASS_COOKIE_NAME, 
-    BYPASS_TOKEN_VALUE, 
-    CHALLENGE_HEADER, 
-    DIFFICULTY_HEADER, 
-    NONCE_HEADER, 
-    TIMESTAMP_HEADER
-};
 use crate::cors::add_cors_headers;
 use crate::http_handler::protected_content;
+use crate::constant::{CHALLENGE_HEADER, NONCE_HEADER, TIMESTAMP_HEADER, DIFFICULTY_HEADER, BYPASS_COOKIE_NAME, BYPASS_TOKEN_VALUE};
 
 /// Serves a multithreaded challenge template for WebAssembly if supported,
 /// denoted by the ` not ` function.

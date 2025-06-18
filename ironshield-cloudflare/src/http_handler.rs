@@ -2,7 +2,7 @@ use axum::body;
 use http::{header, Request, Response, StatusCode};
 use worker::{console_log, Body, Error};
 use crate::challenge::{handle_solution_verification, issue_new_challenge};
-use crate::{CHALLENGE_HEADER, DIFFICULTY_HEADER, NONCE_HEADER, TIMESTAMP_HEADER};
+use crate::constant::{CHALLENGE_HEADER, DIFFICULTY_HEADER, NONCE_HEADER, TIMESTAMP_HEADER};
 use crate::cors::add_cors_headers;
 
 // Simple placeholder for successful access
