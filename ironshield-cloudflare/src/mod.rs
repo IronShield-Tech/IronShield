@@ -1,5 +1,6 @@
 //! # Mod File
 
+pub mod asset;
 pub mod bypass;
 pub mod cors;
 pub mod challenge;
