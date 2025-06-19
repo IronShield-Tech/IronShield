@@ -5,7 +5,7 @@
   </a>
 </p>
 
-<br />
+---
 
 ## Enterprise-Level DDoS Protection at Startup-Friendly Prices
 
