@@ -1,4 +1,11 @@
-# IronShield
+<p align="center">
+  <a href="https://ironshield.cloud">
+    <img  src="/.github/assets/ironshield_logo.svg"
+      width="350" border="0" alt="IronShield">
+  </a>
+</p>
+
+---
 
 ## Enterprise-Level DDoS Protection at Startup-Friendly Prices
 
