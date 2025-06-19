@@ -1,6 +1,6 @@
 <p align="center">
-    <img src="/.github/assets/ironshield_logo_light_mode.svg#gh-light-mode-only" width="320"/>
-    <img src="/.github/assets/ironshield_logo_dark_mode.svg#gh-dark-mode-only" height="320"/>
+    <img src="/.github/assets/ironshield_logo_light_mode.svg#gh-light-mode-only" width="120"/>
+    <img src="/.github/assets/ironshield_logo_dark_mode.svg#gh-dark-mode-only" height="120"/>
 </p>
 
 ---
