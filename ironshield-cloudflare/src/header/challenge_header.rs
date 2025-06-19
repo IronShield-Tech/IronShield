@@ -1,5 +1,7 @@
+use crate::header::util::deserialize_signature;
+use crate::header::util::serialize_signature;
 use chrono::Utc;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 /// * `random_nonce`:     The SHA-256 hash of a random number.
 /// * `created_time`:     Unix milli timestamp for the challenge.
@@ -7,55 +9,24 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 ///                       expiration time. (created_time + 30 ms)
 /// * `challenge_params`: Challenge difficulty parameter or target
 ///                       number of leading zeros in the hash.
+/// * `website_id`:       The identifier of the website.
 /// * `public_key`:       Ed25519 public key for signature verification.
 /// * `signature`:        Ed25519 signature over 
 ///                       (`random_nonce || created_time || expiration_time
 ///                       || challenge_params`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IronShieldChallenge {
-    pub random_nonce:     String,
-    pub created_time:     i64,
-    pub expiration_time:  i64,
-    pub challenge_params: u8,
-    pub public_key:       [u8; 32],
+    pub random_nonce:        String,
+    pub created_time:        i64,
+    pub expiration_time:     i64,
+    pub website_id:          String,
+    pub challenge_params:    u8,
+    pub public_key:          [u8; 32],
     #[serde(
         serialize_with = "serialize_signature",
         deserialize_with = "deserialize_signature"
     )]
-    pub signature:        [u8; 64],
-}
-
-/// Converts the 64-byte Ed25519 signature array
-/// into bytes for serialization.
-fn serialize_signature<S>(
-    signature: &[u8; 64],
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_bytes(signature)
-}
-
-/// Converts serialized bytes back into a 64-byte
-/// Ed25519 signature array, with validation to ensure
-/// the length (64 bytes) is correct.
-fn deserialize_signature<'de, D>(
-    deserializer: D
-) -> Result<[u8; 64], D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-    let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
-
-    if bytes.len() != 64 {
-        return Err(Error::custom(format!("Expected 64 bytes, got {}", bytes.len())));
-    }
-
-    let mut array = [0u8; 64];
-    array.copy_from_slice(&bytes);
-    Ok(array)
+    pub challenge_signature: [u8; 64],
 }
 
 impl IronShieldChallenge {
@@ -75,6 +46,7 @@ impl IronShieldChallenge {
     pub fn new(
         random_nonce:     String,
         created_time:     i64,
+        website_id:       String,
         challenge_params: u8,
         public_key:       [u8; 32],
         signature:        [u8; 64],
@@ -82,10 +54,11 @@ impl IronShieldChallenge {
         Self {
             random_nonce,
             created_time,
+            website_id,
             expiration_time: created_time + 30_000,
             challenge_params,
             public_key,
-            signature,
+            challenge_signature: signature,
         }
     }
 
