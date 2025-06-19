@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 2159 720" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(1,0,0,1,0,-3357)">
-        <g id="Logo---Text--Gradient-White-Text-" serif:id="Logo + Text (Gradient-White Text)" transform="matrix(1,0,0,1,-1,-0.928886)">
-            <rect x="1" y="3357.93" width="2158.69" height="719.387" style="fill:none;"/>
+<svg width="100%" height="100%" viewBox="0 0 2160 720" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,0,0)">
+        <g id="Logo---Text--Gradient-White-Text-" serif:id="Logo + Text (Gradient-White Text)" transform="matrix(1,0,0,1,0,0)">
+            <rect x="0" y="0" width="2160" height="720" style="fill:none;"/>
             <clipPath id="_clip1">
-                <rect x="1" y="3357.93" width="2158.69" height="719.387"/>
+                <rect x="0" y="0" width="2160" height="720"/>
             </clipPath>
             <g clip-path="url(#_clip1)">
-                <g transform="matrix(1,0,0,1,2,3358.86)">
+                <g transform="matrix(1,0,0,1,1,0.93)">
                     <g transform="matrix(1.37978,0,0,1.37978,-972.47,-4884.79)">
                         <rect x="1226.98" y="3729.69" width="33.161" height="150.73" style="fill:white;fill-rule:nonzero;"/>
                         <path d="M1281.93,3764.47L1281.93,3880.42L1315.09,3880.42L1315.09,3819.43C1315.09,3805.98 1328.54,3796.24 1345.7,3796.24L1353.12,3796.24L1353.12,3762.16L1345.47,3762.16C1334.34,3762.16 1322.75,3769.81 1315.09,3783.49L1315.09,3764.47L1281.93,3764.47Z" style="fill:white;fill-rule:nonzero;"/>
