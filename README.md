@@ -1,8 +1,6 @@
 <p align="center">
-  <a href="https://ironshield.cloud">
-    <img  src="/.github/assets/ironshield_logo.svg"
-      width="350" border="0" alt="IronShield">
-  </a>
+    <img src="/.github/assets/ironshield_logo_light_mode.svg#gh-light-mode-only" width="320"/>
+    <img src="/.github/assets/ironshield_logo_dark_mode.svg#gh-dark-mode-only" height="320"/>
 </p>
 
 ---
