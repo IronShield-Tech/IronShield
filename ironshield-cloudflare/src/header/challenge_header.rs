@@ -74,7 +74,6 @@ impl IronShieldChallenge {
     }
 
     /// Serializes the signable data for signature verification.
-    /// Serializes the signable data (for signature verification)
     ///
     /// Concatenates:
     /// - `random_nonce`     as bytes
