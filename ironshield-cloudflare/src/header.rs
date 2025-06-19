@@ -1,34 +1,32 @@
 use chrono::Utc;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// * `random_nonce`:     The SHA-256 hash of a random number.
+/// * `created_time`:     Unix milli timestamp for the challenge.
+/// * `expiration_time`:  Unix milli timestamp for the challenge
+///                       expiration time. (created_time + 30 ms)
+/// * `challenge_params`: Challenge difficulty parameter or target
+///                       number of leading zeros in the hash.
+/// * `public_key`:       Ed25519 public key for signature verification.
+/// * `signature`:        Ed25519 signature over 
+///                       (`random_nonce || created_time || expiration_time
+///                       || challenge_params`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IronShieldChallenge {
-    /// The SHA-256 hash of a random number.
     pub random_nonce:     String,
-    /// Unix milli timestamp for the challenge
-    /// creation time.
     pub created_time:     i64,
-    /// Unix milli timestamp for the challenge
-    /// expiration time. (created_time + 30 ms)
     pub expiration_time:  i64,
-    /// Challenge difficulty parameter or target
-    /// number of leading zeros in the hash.
     pub challenge_params: u8,
-    /// Ed25519 public key for signature 
-    /// verification.
     pub public_key:       [u8; 32],
-    /// Ed25519 signature over 
-    /// (`random_nonce || created_time || 
-    /// expires_time || challenge_params`).
     #[serde(
-        serialize_with = "serialize_signature", 
+        serialize_with = "serialize_signature",
         deserialize_with = "deserialize_signature"
     )]
     pub signature:        [u8; 64],
 }
 
-/// Converts the 64-byte Ed25519 signature array 
-/// into bytes for serialization. 
+/// Converts the 64-byte Ed25519 signature array
+/// into bytes for serialization.
 fn serialize_signature<S>(
     signature: &[u8; 64],
     serializer: S,
@@ -50,11 +48,11 @@ where
 {
     use serde::de::Error;
     let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
-    
+
     if bytes.len() != 64 {
         return Err(Error::custom(format!("Expected 64 bytes, got {}", bytes.len())));
     }
-    
+
     let mut array = [0u8; 64];
     array.copy_from_slice(&bytes);
     Ok(array)
@@ -62,17 +60,17 @@ where
 
 impl IronShieldChallenge {
     /// Constructor, this creates a new `IronShieldChallenge` instance.
-    /// 
-    /// # Arguments 
-    /// 
+    ///
+    /// # Arguments
+    ///
     /// * `random_nonce`:     The SHA-256 hash of a random number.
     /// * `created_time`:     Unix milli timestamp for the challenge
     ///                       creation time.
     /// * `challenge_params`: Unix milli timestamp for the challenge
     ///                       expiration time. (created_time + 30 ms)
     /// * `public_key`:       Ed25519 public key for signature
-    /// * `signature`:        Ed25519 signature over (`random_nonce || 
-    ///                       created_time || expires_time || 
+    /// * `signature`:        Ed25519 signature over (`random_nonce ||
+    ///                       created_time || expires_time ||
     ///                       challenge_params`).
     pub fn new(
         random_nonce:     String,
@@ -90,21 +88,21 @@ impl IronShieldChallenge {
             signature,
         }
     }
-    
+
     /// Check if the challenge has expired.
     pub fn is_expired(&self) -> bool {
         Utc::now().timestamp_millis() > self.expiration_time
     }
-    
-    /// Returns the remaining time until the 
+
+    /// Returns the remaining time until the
     /// expiration in milliseconds.
     pub fn time_until_expiration(&self) -> i64 {
         self.expiration_time - Utc::now().timestamp_millis()
     }
-    
+
     /// Serializes the signable data for signature verification.
     /// Serializes the signable data (for signature verification)
-    /// 
+    ///
     /// Concatenates:
     /// - `random_nonce`     as bytes
     /// - `created_time`     as 8 bytes, big-endian.
