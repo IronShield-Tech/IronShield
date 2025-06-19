@@ -73,19 +73,28 @@ impl IronShieldChallenge {
         self.expiration_time - Utc::now().timestamp_millis()
     }
 
-    /// Serializes the signable data for signature verification.
+    /// Concatenates the challenge data into a string.
     ///
     /// Concatenates:
-    /// - `random_nonce`     as bytes
-    /// - `created_time`     as 8 bytes, big-endian.
-    /// - `expiration_time`  as 8 bytes, big-endian.
-    /// - `challenge_params` as a single byte.
-    pub fn signable_data(&self) -> Vec<u8> {
-        let mut data = Vec::new();
-        data.extend_from_slice(self.random_nonce.as_bytes());
-        data.extend_from_slice(&self.created_time.to_be_bytes());
-        data.extend_from_slice(&self.expiration_time.to_be_bytes());
-        data.push(self.challenge_params);
-        data
+    /// - `random_nonce`     as a string.
+    /// - `created_time`     as i64.
+    /// - `expiration_time`  as i64.
+    /// - `website_id`       as a string.
+    /// - `public_key`       as a lowercase hex string.
+    /// - `challenge_params` as a lowercase hex string.
+    pub fn concat_struct(&self) -> String {
+        format!(
+            "{}|{}|{}|{}|{}|{}|{}",
+            self.random_nonce,
+            self.created_time,
+            self.expiration_time,
+            self.website_id,
+            self.challenge_params,
+            // Use of hex::encode to convert the public key to a hex string
+            // "Encodes data as hex string using lowercase characters."
+            // Requirement of `format!`.
+            hex::encode(self.public_key),
+            hex::encode(self.challenge_signature)
+        )
     }
 }

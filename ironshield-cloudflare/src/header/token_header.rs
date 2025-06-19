@@ -45,15 +45,23 @@ impl IronShieldToken {
         Utc::now().timestamp_millis() > self.valid_for
     }
 
-    /// Get the signable data for authentication signature verification.
-    /// 
-    /// Concatenates: 
-    /// * `challenge_signature` as bytes.
-    /// * `valid_for`           as a big-endian 8-byte integer.
-    pub fn signable_data(&self) -> Vec<u8> {
-        let mut data = Vec::new();
-        data.extend_from_slice(&self.challenge_signature);
-        data.extend_from_slice(&self.valid_for.to_be_bytes());
-        data
+    /// Concatenates the token data into a string.
+    ///
+    /// Concatenates:
+    /// - `challenge_signature`:      as a lowercase hex string.
+    /// - `valid_for`:                as i64.
+    /// - `public_key`:               as a lowercase hex string.
+    /// - `authentication_signature`: as a lowercase hex string.
+    pub fn concat_struct(&self) -> String {
+        format!(
+            "{}|{}|{}|{}",
+            // Use of hex::encode to convert the public key to a hex string
+            // "Encodes data as hex string using lowercase characters."
+            // Requirement of `format!`.
+            hex::encode(self.challenge_signature),
+            self.valid_for,
+            hex::encode(self.public_key),
+            hex::encode(self.authentication_signature)
+        )
     }
 }
