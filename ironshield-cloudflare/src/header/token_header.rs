@@ -48,10 +48,8 @@ impl IronShieldToken {
     /// Concatenates the token data into a string.
     ///
     /// Concatenates:
-    /// - `challenge_signature`:      as a lowercase hex string.
-    /// - `valid_for`:                as i64.
-    /// - `public_key`:               as a lowercase hex string.
-    /// - `authentication_signature`: as a lowercase hex string.
+    /// - `challenge_signature` as a lowercase hex string.
+    /// - `valid_for`:          as a string.
     pub fn concat_struct(&self) -> String {
         format!(
             "{}|{}|{}|{}",
