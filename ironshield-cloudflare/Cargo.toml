@@ -30,3 +30,4 @@ js-sys = "0.3"
 getrandom = { version = "0.2", features = ["js"] }
 sha2 = "0.10"
 rand = "0.8"
+base64 = "0.22.1"
