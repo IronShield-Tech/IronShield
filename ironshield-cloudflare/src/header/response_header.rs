@@ -29,22 +29,4 @@ impl IronShieldChallengeResponse {
             solution,
         }
     }
-
-    /// Concatenates the response data into a string.
-    ///
-    /// Concatenates:
-    /// - `challenge_signature`:      as a lowercase hex string.
-    /// - `valid_for`:                as i64.
-    /// - `public_key`:               as a lowercase hex string.
-    /// - `authentication_signature`: as a lowercase hex string.
-    pub fn concat_struct(&self) -> String {
-        format!(
-            "{}|{}",
-            // Use of hex::encode to convert the public key to a hex string
-            // "Encodes data as hex string using lowercase characters."
-            // Requirement of `format!`.
-            hex::encode(self.challenge_signature),
-            self.solution
-        )
-    }
 }
