@@ -19,7 +19,7 @@ pub struct IronShieldChallenge {
     pub created_time:        i64,
     pub expiration_time:     i64,
     pub website_id:          String,
-    pub challenge_param:    [u8; 32],
+    pub challenge_param:     [u8; 32],
     pub public_key:          [u8; 32],
     #[serde(
         serialize_with = "serialize_signature",
@@ -46,7 +46,7 @@ impl IronShieldChallenge {
         random_nonce:     String,
         created_time:     i64,
         website_id:       String,
-        challenge_param: [u8; 32],
+        challenge_param:  [u8; 32],
         public_key:       [u8; 32],
         signature:        [u8; 64],
     ) -> Self {
@@ -129,8 +129,11 @@ impl IronShieldChallenge {
 
         let website_id = parts[3].to_string();
 
-        let challenge_params = parts[4].parse::<u8>()
-            .map_err(|_| "Failed to parse challenge_params as u8")?;
+        let challenge_param_bytes = hex::decode(parts[4])
+            .map_err(|_| "Failed to decode challenge_params hex string")?;
+        let challenge_param: [u8; 32] = challenge_param_bytes
+            .try_into()
+            .map_err(|_| "Challenge params must be exactly 32 bytes")?;
 
         let public_key_bytes = hex::decode(parts[5])
             .map_err(|_| "Failed to decode public_key hex string")?;
@@ -148,7 +151,7 @@ impl IronShieldChallenge {
             created_time,
             expiration_time,
             website_id,
-            challenge_params,
+            challenge_param,
             public_key,
             challenge_signature,
         })
