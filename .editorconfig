@@ -9,5 +9,10 @@ insert_final_newline = false
 [*.rs]
 max_line_length = 100
 
+[*.md]
+# double whitespace at end of line
+# denotes a line break in Markdown
+trim_trailing_whitespace = false
+
 [*.yml]
 indent_size = 2
