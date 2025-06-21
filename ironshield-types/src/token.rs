@@ -49,9 +49,9 @@ impl IronShieldToken {
     /// Concatenates the token data into a string.
     ///
     /// Concatenates:
-    /// - `challenge_signature` as a lowercase hex string.
-    /// - `valid_for`:          as a string.
-    /// - `public_key`:         as a lowercase hex string.
+    /// - `challenge_signature`       as a lowercase hex string.
+    /// - `valid_for`:                as a string.
+    /// - `public_key`:               as a lowercase hex string.
     /// - `authentication_signature`: as a lowercase hex string.
     pub fn concat_struct(&self) -> String {
         format!(
@@ -114,4 +114,135 @@ impl IronShieldToken {
             authentication_signature,
         })
     }
-} 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_from_concat_struct_edge_cases() {
+        // Test with a valid minimum length hex (32 bytes = 64 hex chars for public_key, 64 bytes = 128 hex chars for signatures).
+        // Building strings programmatically.
+        let valid_32_byte_hex = "0".repeat(64);  // 32 bytes = 64 hex chars
+        let valid_64_byte_hex = "0".repeat(128); // 64 bytes = 128 hex chars
+        assert_eq!(valid_32_byte_hex.len(), 64, "32-byte hex string should be exactly 64 characters");
+        assert_eq!(valid_64_byte_hex.len(), 128, "64-byte hex string should be exactly 128 characters");
+
+        let input = format!("{}|1000000|{}|{}",
+                            valid_64_byte_hex, valid_32_byte_hex, valid_64_byte_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+
+        if result.is_err() {
+            panic!("Expected success but got error: {}", result.unwrap_err());
+        }
+
+        let parsed = result.unwrap();
+        assert_eq!(parsed.challenge_signature, [0u8; 64]);
+        assert_eq!(parsed.valid_for, 1000000);
+        assert_eq!(parsed.public_key, [0u8; 32]);
+        assert_eq!(parsed.authentication_signature, [0u8; 64]);
+
+        // Test with all F's hex.
+        let all_f_32_hex = "f".repeat(64);   // 32 bytes of 0xFF
+        let all_f_64_hex = "f".repeat(128);  // 64 bytes of 0xFF
+        assert_eq!(all_f_32_hex.len(), 64, "All F's 32-byte hex string should be exactly 64 characters");
+        assert_eq!(all_f_64_hex.len(), 128, "All F's 64-byte hex string should be exactly 128 characters");
+
+        let input = format!("{}|9999999|{}|{}",
+                            all_f_64_hex, all_f_32_hex, all_f_64_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+
+        if result.is_err() {
+            panic!("Expected success but got error: {}", result.unwrap_err());
+        }
+
+        let parsed = result.unwrap();
+        assert_eq!(parsed.challenge_signature, [0xffu8; 64]);
+        assert_eq!(parsed.valid_for, 9999999);
+        assert_eq!(parsed.public_key, [0xffu8; 32]);
+        assert_eq!(parsed.authentication_signature, [0xffu8; 64]);
+    }
+
+    #[test]
+    fn test_concat_struct_roundtrip() {
+        // Create a token with known values.
+        let original_token = IronShieldToken::new(
+            [0xAB; 64],
+            1700000000000,
+            [0xCD; 32],
+            [0xEF; 64],
+        );
+
+        // Convert to concat string and back.
+        let concat_str = original_token.concat_struct();
+        let parsed_token = IronShieldToken::from_concat_struct(&concat_str).unwrap();
+
+        // Verify all fields are preserved.
+        assert_eq!(original_token.challenge_signature, parsed_token.challenge_signature);
+        assert_eq!(original_token.valid_for, parsed_token.valid_for);
+        assert_eq!(original_token.public_key, parsed_token.public_key);
+        assert_eq!(original_token.authentication_signature, parsed_token.authentication_signature);
+    }
+
+    #[test]
+    fn test_empty_string_parsing() {
+        let result = IronShieldToken::from_concat_struct("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Expected 4 parts, got 1"));
+    }
+
+
+    #[test]
+    fn test_from_concat_struct_error_cases() {
+        // Test with the wrong number of parts.
+        let result = IronShieldToken::from_concat_struct("only|two|parts");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Expected 4 parts, got 3"));
+
+        let result = IronShieldToken::from_concat_struct("too|many|parts|here|extra");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Expected 4 parts, got 5"));
+
+        // Test with invalid hex for challenge_signature.
+        let valid_32_hex = "0".repeat(64);
+        let valid_64_hex = "0".repeat(128);
+        let invalid_hex = "invalid_hex_string";
+
+        let input = format!("{}|1000000|{}|{}", invalid_hex, valid_32_hex, valid_64_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to decode challenge_signature hex string"));
+
+        // Test with invalid hex for public_key.
+        let input = format!("{}|1000000|{}|{}", valid_64_hex, invalid_hex, valid_64_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to decode public_key hex string"));
+
+        // Test with invalid hex for authentication_signature.
+        let input = format!("{}|1000000|{}|{}", valid_64_hex, valid_32_hex, invalid_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to decode authentication_signature hex string"));
+
+        // Test with an invalid timestamp.
+        let input = format!("{}|not_a_number|{}|{}", valid_64_hex, valid_32_hex, valid_64_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to parse valid_for as i64"));
+
+        // Test with wrong length hex strings.
+        let short_hex = "0".repeat(32); // Too short for a 64-byte signature.
+        let input = format!("{}|1000000|{}|{}", short_hex, valid_32_hex, valid_64_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Challenge signature must be exactly 64 bytes"));
+
+        let short_32_hex = "0".repeat(32); // Too short for a 32-byte public key.
+        let input = format!("{}|1000000|{}|{}", valid_64_hex, short_32_hex, valid_64_hex);
+        let result = IronShieldToken::from_concat_struct(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Public key must be exactly 32 bytes"));
+    }
+}
