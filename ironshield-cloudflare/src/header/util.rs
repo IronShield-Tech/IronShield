@@ -48,7 +48,7 @@ pub fn deserialize_signature<'de, D>(
 /// 
 /// # Returns
 /// * A Base64 URL-safe encoded string without padding.
-pub fn concat_struct_base64url_encode(concat_string: String) -> String {
+pub fn concat_struct_base64url_encode(concat_string: &str) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(concat_string.as_bytes())
 }
 
