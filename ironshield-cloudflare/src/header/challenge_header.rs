@@ -7,20 +7,19 @@ use serde::{Deserialize, Serialize};
 /// * `created_time`:     Unix milli timestamp for the challenge.
 /// * `expiration_time`:  Unix milli timestamp for the challenge
 ///                       expiration time. (created_time + 30 ms)
-/// * `challenge_params`: Challenge difficulty parameter or target
-///                       number of leading zeros in the hash.
+/// * `challenge_param`: Size of target number the hashed nonce should be less than.
 /// * `website_id`:       The identifier of the website.
 /// * `public_key`:       Ed25519 public key for signature verification.
 /// * `signature`:        Ed25519 signature over 
 ///                       (`random_nonce || created_time || expiration_time
-///                       || challenge_params`).
+///                       || challenge_param`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IronShieldChallenge {
     pub random_nonce:        String,
     pub created_time:        i64,
     pub expiration_time:     i64,
     pub website_id:          String,
-    pub challenge_params:    u8,
+    pub challenge_param:    [u8; 32],
     pub public_key:          [u8; 32],
     #[serde(
         serialize_with = "serialize_signature",
@@ -47,7 +46,7 @@ impl IronShieldChallenge {
         random_nonce:     String,
         created_time:     i64,
         website_id:       String,
-        challenge_params: u8,
+        challenge_param: [u8; 32],
         public_key:       [u8; 32],
         signature:        [u8; 64],
     ) -> Self {
@@ -56,7 +55,7 @@ impl IronShieldChallenge {
             created_time,
             website_id,
             expiration_time: created_time + 30_000,
-            challenge_params,
+            challenge_param,
             public_key,
             challenge_signature: signature,
         }
@@ -89,10 +88,8 @@ impl IronShieldChallenge {
             self.created_time,
             self.expiration_time,
             self.website_id,
-            self.challenge_params,
-            // Use of hex::encode to convert the public key to a hex string
-            // "Encodes data as hex string using lowercase characters."
-            // Requirement of `format!`.
+            // We need to encode the byte arrays for format! to work.
+            hex::encode(self.challenge_param),
             hex::encode(self.public_key),
             hex::encode(self.challenge_signature)
         )
