@@ -7,7 +7,9 @@ pub mod challenge;
 pub mod difficulty;
 pub mod constant;
 pub mod http_handler;
-pub mod header;
+
+// Re-export shared types
+pub use ironshield_types::*;
 
 pub use bypass::{
     check_bypass_token, 

@@ -1,35 +1,52 @@
 use base64::Engine;
 use serde::{Deserialize, Deserializer, Serializer};
 
-/// Converts the 64-byte Ed25519 signature array
-/// into bytes for serialization.
-pub fn serialize_signature<S>(
-    signature: &[u8; 64],
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+/// Custom serialization for 64-byte arrays (Ed25519 signatures)
+pub fn serialize_signature<S>(signature: &[u8; 64], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
 {
     serializer.serialize_bytes(signature)
 }
 
-/// Converts serialized bytes back into a 64-byte
-/// Ed25519 signature array, with validation to ensure
-/// the length (64 bytes) is correct.
-pub fn deserialize_signature<'de, D>(
-    deserializer: D
-) -> Result<[u8; 64], D::Error>
-    where
-        D: Deserializer<'de>,
+/// Custom deserialization for 64-byte arrays (Ed25519 signatures)
+pub fn deserialize_signature<'de, D>(deserializer: D) -> Result<[u8; 64], D::Error>
+where
+    D: Deserializer<'de>,
 {
     use serde::de::Error;
     let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
-
+    
     if bytes.len() != 64 {
         return Err(Error::custom(format!("Expected 64 bytes, got {}", bytes.len())));
     }
-
+    
     let mut array = [0u8; 64];
+    array.copy_from_slice(&bytes);
+    Ok(array)
+}
+
+/// Custom serialization for 32-byte arrays (challenge params, public keys)
+pub fn serialize_32_bytes<S>(bytes: &[u8; 32], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_bytes(bytes)
+}
+
+/// Custom deserialization for 32-byte arrays (challenge params, public keys)
+pub fn deserialize_32_bytes<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
+    
+    if bytes.len() != 32 {
+        return Err(Error::custom(format!("Expected 32 bytes, got {}", bytes.len())));
+    }
+    
+    let mut array = [0u8; 32];
     array.copy_from_slice(&bytes);
     Ok(array)
 }
@@ -77,4 +94,4 @@ pub fn concat_struct_base64url_decode(encoded_string: String) -> Result<String, 
 
     String::from_utf8(decoded_bytes)
         .map_err(|e| format!("UTF-8 conversion error: {}", e))
-}
+} 

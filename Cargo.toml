@@ -22,6 +22,7 @@ path = "ironshield-cloudflare/src/lib.rs"
 [dependencies]
 # Workspace members
 ironshield-core = { path = "./ironshield-core" }
+ironshield-types = { path = "./ironshield-types" }
 
 # Default Axum template dependencies
 axum = { version = "0.7", default-features = false }
@@ -55,5 +56,6 @@ codegen-units = 1
 members = [
     "ironshield-core",
     "ironshield-cloudflare",
-    "ironshield-wasm"
+    "ironshield-wasm",
+    "ironshield-types"
 ]

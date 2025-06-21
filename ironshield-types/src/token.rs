@@ -1,8 +1,9 @@
 use chrono::Utc;
-use crate::header::util::deserialize_signature;
-use crate::header::util::serialize_signature;
+use crate::serde_utils::{serialize_signature, deserialize_signature};
 use serde::{Deserialize, Serialize};
 
+/// IronShield Token structure
+/// 
 /// * `challenge_signature`:      The Ed25519 signature of the challenge.
 /// * `valid_for`:                The Unix timestamp in unix millis.
 /// * `public_key`:               The Ed25519 public key corresponding 
@@ -40,7 +41,7 @@ impl IronShieldToken {
         }
     }
 
-    /// Check if the challenge has expired.
+    /// Check if the token has expired.
     pub fn is_expired(&self) -> bool {
         Utc::now().timestamp_millis() > self.valid_for
     }
@@ -50,10 +51,12 @@ impl IronShieldToken {
     /// Concatenates:
     /// - `challenge_signature` as a lowercase hex string.
     /// - `valid_for`:          as a string.
+    /// - `public_key`:         as a lowercase hex string.
+    /// - `authentication_signature`: as a lowercase hex string.
     pub fn concat_struct(&self) -> String {
         format!(
             "{}|{}|{}|{}",
-            // Use of hex::encode to convert the public key to a hex string
+            // Use of hex::encode to convert the arrays to hex strings
             // "Encodes data as hex string using lowercase characters."
             // Requirement of `format!`.
             hex::encode(self.challenge_signature),
@@ -111,4 +114,4 @@ impl IronShieldToken {
             authentication_signature,
         })
     }
-}
+} 
