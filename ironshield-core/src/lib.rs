@@ -7,23 +7,12 @@ use hex;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use sha2::{Digest, Sha256};
-use chrono::Utc;
+pub use ironshield_types::*; // Re-export types from ironshield-types
 
-// Re-export types from ironshield-types
-pub use ironshield_types::*;
 
-/// Maximum number of nonce values to try before giving up.
-const MAX_ATTEMPTS:   u64 = 10_000_000;
-
-/// Number of nonce values processed in each parallel chunk.
-const CHUNK_SIZE:   usize = 10_000;
-
-/// How often to yield control back to the runtime. (every
-/// N nonce attempts)
-const YIELD_INTERVAL: u64 = 1000;
-
-/// Maximum number of nonce values to try in the new algorithm before giving up.
-const MAX_ATTEMPTS_SINGLE_THREADED: i64 = 100_000_000;
+const MAX_ATTEMPTS:   u64 = 10_000_000; // Maximum number of nonce values to try before giving up.
+const CHUNK_SIZE:   usize = 10_000; // Number of nonce values processed in each parallel chunk.
+const MAX_ATTEMPTS_SINGLE_THREADED: i64 = 100_000_000; // Maximum number of nonce values to try in the new algorithm before giving up.
 
 /// PERFORMANCE ANALYSIS: Critical Optimization Impact
 /// 
@@ -293,6 +282,7 @@ pub fn verify_ironshield_solution(challenge: &IronShieldChallenge, nonce: i64) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
 
     #[test]
     fn test_hash_calculation() {
@@ -375,7 +365,7 @@ mod tests {
     #[test]
     fn test_ironshield_challenge_expiration() {
         let past_time = Utc::now().timestamp_millis() - 60000; // 1 minute ago
-        let challenge = IronShieldChallenge::new(
+        let challenge: IronShieldChallenge = IronShieldChallenge::new(
             "deadbeef".to_string(),
             past_time,
             "test_website".to_string(),
@@ -390,7 +380,7 @@ mod tests {
 
     #[test]
     fn test_serde_serialization() {
-        let challenge = IronShieldChallenge::new(
+        let challenge: IronShieldChallenge = IronShieldChallenge::new(
             "deadbeef".to_string(),
             1000000,
             "test_website".to_string(),
@@ -414,7 +404,7 @@ mod tests {
     #[test]
     fn test_verify_ironshield_solution() {
         // Create a challenge with reasonable threshold
-        let challenge = IronShieldChallenge::new(
+        let challenge: IronShieldChallenge = IronShieldChallenge::new(
             "cafe1234".to_string(),
             1000000,
             "test_website".to_string(),
@@ -441,7 +431,7 @@ mod tests {
                 "Obviously wrong nonce should fail verification");
                 
         // Test with invalid hex in the challenge
-        let bad_challenge = IronShieldChallenge::new(
+        let bad_challenge: IronShieldChallenge = IronShieldChallenge::new(
             "invalid_hex_zzzz".to_string(), // Invalid hex
             1000000,
             "test_website".to_string(),
