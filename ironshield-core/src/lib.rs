@@ -14,46 +14,6 @@ const MAX_ATTEMPTS:   u64 = 10_000_000; // Maximum number of nonce values to try
 const CHUNK_SIZE:   usize = 10_000; // Number of nonce values processed in each parallel chunk.
 const MAX_ATTEMPTS_SINGLE_THREADED: i64 = 100_000_000; // Maximum number of nonce values to try in the new algorithm before giving up.
 
-/// PERFORMANCE ANALYSIS: Critical Optimization Impact
-/// 
-/// The find_solution_single_threaded function underwent a critical optimization that eliminates
-/// heap allocation in the inner loop. Here's the performance analysis:
-/// 
-/// BEFORE (per iteration):
-/// - Vec::with_capacity(N + 8): Heap allocation (~40-100 CPU cycles)
-/// - extend_from_slice(): Memory copy #1 (random_nonce_bytes)  
-/// - extend_from_slice(): Memory copy #2 (nonce_bytes)
-/// - hasher.update(): Hash computation
-/// - Vec drop: Heap deallocation (~40-100 CPU cycles)
-/// 
-/// AFTER (per iteration):
-/// - Sha256::new(): Stack allocation (~5-10 CPU cycles)
-/// - hasher.update(): Hash computation only
-/// 
-/// ELIMINATED OPERATIONS PER ITERATION:
-/// - 1 heap allocation (malloc): ~40-100 CPU cycles
-/// - 2 memory copies (memcpy): ~10-50 CPU cycles each
-/// - 1 heap deallocation (free): ~40-100 CPU cycles
-/// 
-/// TOTAL SAVINGS PER ITERATION: ~100-300 CPU cycles
-/// 
-/// ANALYSIS OF REMAINING BOTTLENECKS:
-/// 1. Sha256::new() cannot be avoided - sha2 crate doesn't support hasher reset
-/// 2. Stack allocation of [u8; 8] for nonce_bytes is optimal (compile-time known size)
-/// 3. Multiple hasher.update() calls are cryptographically identical to concatenation
-/// 4. Hash computation dominates runtime (~1000+ cycles), so our optimization is significant
-/// 
-/// EXPECTED PERFORMANCE GAIN:
-/// At millions of iterations per second, this optimization should provide:
-/// - 2-5x speedup for small random_nonce values (8-16 bytes)
-/// - 5-10x speedup for larger random_nonce values (32+ bytes)
-/// - Reduced memory pressure and fragmentation
-/// - Better CPU cache performance due to fewer memory allocations
-/// - Reduced system call overhead (malloc/free)
-/// 
-/// VERIFIED: Multiple hasher.update() approach is cryptographically identical to concatenation
-/// but avoids all dynamic memory management in the critical path.
-
 /// Find a solution for the given challenge and difficulty level
 /// using sequential search.
 /// 
@@ -79,11 +39,6 @@ pub fn find_solution(challenge: &str, difficulty: usize) -> Result<(u64, String)
 
         if hash.starts_with(&target_prefix) {
             return Ok((nonce, hash));
-        }
-
-        // Occasionally yield to avoid blocking UI
-        if nonce % YIELD_INTERVAL == 0 {
-            // In real implementation, we'd use js_sys::Promise here
         }
     }
 
@@ -176,14 +131,6 @@ pub fn verify_solution(challenge: &str, nonce_str: &str, difficulty: usize) -> b
 /// 4. Compares the hash [u8; 32] with challenge_param [u8; 32] using byte-wise comparison
 /// 5. Returns the first nonce where hash < challenge_param
 /// 
-/// # Performance Notes
-/// - **CRITICAL OPTIMIZATION**: Uses SHA256 hasher's multiple update() calls instead of Vec concatenation
-/// - **ELIMINATES**: Heap allocation (Vec::with_capacity) in every iteration - massive performance gain
-/// - **ELIMINATES**: Memory copying (extend_from_slice) in every iteration
-/// - **ELIMINATES**: Vector deallocation overhead in every iteration
-/// - Uses [u8; 32] for direct memory comparison (faster than string operations)
-/// - Byte-wise comparison treats arrays as big-endian 256-bit integers
-/// - Single-threaded implementation suitable for WASM and simple use cases
 /// 
 /// # Arguments
 /// * `challenge` - The IronShieldChallenge struct containing random_nonce and challenge_param
@@ -215,22 +162,14 @@ pub fn find_solution_single_threaded(
         // Convert nonce to little-endian bytes (8 bytes for i64)
         let nonce_bytes: [u8; 8] = nonce.to_le_bytes();
         
-        // CRITICAL OPTIMIZATION: Use multiple hasher updates instead of Vec concatenation
-        // This eliminates heap allocation and memory copying in the critical loop
-        // SHA256 hasher treats multiple update() calls as if the data was concatenated
+        // Calculate the hash of the random_nonce and nonce
         let mut hasher = Sha256::new();
         hasher.update(&random_nonce_bytes);  // First part of the input
         hasher.update(&nonce_bytes);         // Second part of the input
         let hash_result = hasher.finalize();
         
-        // Convert hash to [u8; 32] for comparison
-        // This is a very efficient conversion from GenericArray to [u8; 32]
+        // Convert hash and use byte-wise comparison with the target threshold
         let hash_bytes: [u8; 32] = hash_result.into();
-        
-        // Compare hash with target threshold using byte-wise comparison
-        // This is extremely efficient - direct memory comparison of two [u8; 32] arrays
-        // The comparison treats the arrays as big-endian 256-bit integers
-        // hash_bytes < target_threshold means the hash value is numerically smaller
         if hash_bytes < *target_threshold {
             // Found a valid solution!
             return Ok(IronShieldChallengeResponse::new(
@@ -469,5 +408,49 @@ mod tests {
         
         // Both methods should produce identical results
         assert_eq!(hash1, hash2, "Optimized and traditional methods should produce identical hashes");
+    }
+
+    #[test]
+    fn test_recommended_attempts() {
+        // Test the new recommended_attempts function
+        assert_eq!(IronShieldChallenge::recommended_attempts(1000), 3000);
+        assert_eq!(IronShieldChallenge::recommended_attempts(50000), 150000);
+        assert_eq!(IronShieldChallenge::recommended_attempts(0), 0);
+        
+        // Test overflow protection
+        assert_eq!(IronShieldChallenge::recommended_attempts(u64::MAX), u64::MAX);
+    }
+
+    #[test]
+    fn test_difficulty_to_challenge_param() {
+        // Test that our difficulty conversion works correctly
+        
+        // Very easy case
+        let challenge_param = IronShieldChallenge::difficulty_to_challenge_param(1);
+        assert_eq!(challenge_param, [0xFF; 32]);
+        
+        // Test zero difficulty panics
+        let result = std::panic::catch_unwind(|| {
+            IronShieldChallenge::difficulty_to_challenge_param(0);
+        });
+        assert!(result.is_err(), "Zero difficulty should panic");
+        
+        // Test some practical values produce valid outputs
+        let challenge_param_256 = IronShieldChallenge::difficulty_to_challenge_param(256);
+        assert_ne!(challenge_param_256, [0; 32]);
+        assert_ne!(challenge_param_256, [0xFF; 32]);
+        
+        let challenge_param_1024 = IronShieldChallenge::difficulty_to_challenge_param(1024);
+        assert_ne!(challenge_param_1024, [0; 32]);
+        assert_ne!(challenge_param_1024, [0xFF; 32]);
+        
+        // Test very high difficulty
+        let challenge_param_max = IronShieldChallenge::difficulty_to_challenge_param(u64::MAX);
+        assert_eq!(challenge_param_max, [0; 32], "Maximum difficulty should produce all zeros");
+        
+        // Test that the function produces consistent results
+        let challenge_param_test = IronShieldChallenge::difficulty_to_challenge_param(1000);
+        let challenge_param_test2 = IronShieldChallenge::difficulty_to_challenge_param(1000);
+        assert_eq!(challenge_param_test, challenge_param_test2, "Function should be deterministic");
     }
 }
