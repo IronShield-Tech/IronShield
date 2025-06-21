@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node build.js",
     "dev": "wrangler dev",
+    "dev:no-parallel": "NO_PARALLEL=true wrangler dev",
     "deploy": "wrangler publish"
   },
   "author": "ebosspc <software2070@protonmail.com>",
