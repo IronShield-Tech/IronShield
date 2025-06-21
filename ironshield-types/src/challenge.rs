@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 /// * `created_time`:     Unix milli timestamp for the challenge.
 /// * `expiration_time`:  Unix milli timestamp for the challenge expiration time.
 /// * `challenge_param`:  Target threshold - hash must be less than this value.
+/// * `recommended_attempts`: Expected number of attempts for user guidance (3x difficulty).
 /// * `website_id`:       The identifier of the website.
 /// * `public_key`:       Ed25519 public key for signature verification.
 /// * `challenge_signature`: Ed25519 signature over the challenge data.
@@ -22,6 +23,7 @@ pub struct IronShieldChallenge {
         deserialize_with = "deserialize_32_bytes"
     )]
     pub challenge_param:     [u8; 32],
+    pub recommended_attempts: u64,
     #[serde(
         serialize_with = "serialize_32_bytes",
         deserialize_with = "deserialize_32_bytes"
@@ -50,6 +52,7 @@ impl IronShieldChallenge {
             website_id,
             expiration_time: created_time + 30_000, // 30 seconds
             challenge_param,
+            recommended_attempts: 0, // This will be set later
             public_key,
             challenge_signature: signature,
         }
@@ -155,6 +158,14 @@ impl IronShieldChallenge {
         difficulty.saturating_mul(3)
     }
 
+    /// Sets the recommended_attempts field based on the given difficulty.
+    /// 
+    /// # Arguments
+    /// * `difficulty` - The difficulty value to base the recommendation on
+    pub fn set_recommended_attempts(&mut self, difficulty: u64) {
+        self.recommended_attempts = Self::recommended_attempts(difficulty);
+    }
+
     /// Concatenates the challenge data into a string.
     ///
     /// Concatenates:
@@ -235,6 +246,7 @@ impl IronShieldChallenge {
             expiration_time,
             website_id,
             challenge_param,
+            recommended_attempts: 0, // This will be set later
             public_key,
             challenge_signature,
         })
