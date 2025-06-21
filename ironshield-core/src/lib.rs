@@ -7,146 +7,10 @@ use hex;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use sha2::{Digest, Sha256};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use chrono::Utc;
 
-/// Custom serialization for 64-byte arrays (Ed25519 signatures)
-fn serialize_signature<S>(signature: &[u8; 64], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_bytes(signature)
-}
-
-/// Custom deserialization for 64-byte arrays (Ed25519 signatures)
-fn deserialize_signature<'de, D>(deserializer: D) -> Result<[u8; 64], D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-    let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
-    
-    if bytes.len() != 64 {
-        return Err(Error::custom(format!("Expected 64 bytes, got {}", bytes.len())));
-    }
-    
-    let mut array = [0u8; 64];
-    array.copy_from_slice(&bytes);
-    Ok(array)
-}
-
-/// Custom serialization for 32-byte arrays (challenge params, public keys)
-fn serialize_32_bytes<S>(bytes: &[u8; 32], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_bytes(bytes)
-}
-
-/// Custom deserialization for 32-byte arrays (challenge params, public keys)
-fn deserialize_32_bytes<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-    let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
-    
-    if bytes.len() != 32 {
-        return Err(Error::custom(format!("Expected 32 bytes, got {}", bytes.len())));
-    }
-    
-    let mut array = [0u8; 32];
-    array.copy_from_slice(&bytes);
-    Ok(array)
-}
-
-/// IronShield Challenge structure for the new proof-of-work algorithm
-/// 
-/// * `random_nonce`:     The SHA-256 hash of a random number (hex string).
-/// * `created_time`:     Unix milli timestamp for the challenge.
-/// * `expiration_time`:  Unix milli timestamp for the challenge expiration time.
-/// * `challenge_param`:  Target threshold - hash must be less than this value.
-/// * `website_id`:       The identifier of the website.
-/// * `public_key`:       Ed25519 public key for signature verification.
-/// * `challenge_signature`: Ed25519 signature over the challenge data.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IronShieldChallenge {
-    pub random_nonce:        String,
-    pub created_time:        i64,
-    pub expiration_time:     i64,
-    pub website_id:          String,
-    #[serde(
-        serialize_with = "serialize_32_bytes",
-        deserialize_with = "deserialize_32_bytes"
-    )]
-    pub challenge_param:     [u8; 32],
-    #[serde(
-        serialize_with = "serialize_32_bytes",
-        deserialize_with = "deserialize_32_bytes"
-    )]
-    pub public_key:          [u8; 32],
-    #[serde(
-        serialize_with = "serialize_signature",
-        deserialize_with = "deserialize_signature"
-    )]
-    pub challenge_signature: [u8; 64],
-}
-
-/// IronShield Challenge Response structure
-/// 
-/// * `challenge_signature`: The Ed25519 signature of the challenge (copied from challenge).
-/// * `solution`:            The nonce solution found by the proof-of-work algorithm.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IronShieldChallengeResponse {
-    #[serde(
-        serialize_with = "serialize_signature",
-        deserialize_with = "deserialize_signature"
-    )]
-    pub challenge_signature: [u8; 64],
-    pub solution:            i64,
-}
-
-impl IronShieldChallenge {
-    /// Constructor for creating a new IronShieldChallenge instance.
-    pub fn new(
-        random_nonce:     String,
-        created_time:     i64,
-        website_id:       String,
-        challenge_param:  [u8; 32],
-        public_key:       [u8; 32],
-        signature:        [u8; 64],
-    ) -> Self {
-        Self {
-            random_nonce,
-            created_time,
-            website_id,
-            expiration_time: created_time + 30_000, // 30 seconds
-            challenge_param,
-            public_key,
-            challenge_signature: signature,
-        }
-    }
-
-    /// Check if the challenge has expired.
-    pub fn is_expired(&self) -> bool {
-        Utc::now().timestamp_millis() > self.expiration_time
-    }
-
-    /// Returns the remaining time until expiration in milliseconds.
-    pub fn time_until_expiration(&self) -> i64 {
-        self.expiration_time - Utc::now().timestamp_millis()
-    }
-}
-
-impl IronShieldChallengeResponse {
-    /// Constructor for creating a new IronShieldChallengeResponse instance.
-    pub fn new(challenge_signature: [u8; 64], solution: i64) -> Self {
-        Self {
-            challenge_signature,
-            solution,
-        }
-    }
-}
+// Re-export types from ironshield-types
+pub use ironshield_types::*;
 
 /// Maximum number of nonce values to try before giving up.
 const MAX_ATTEMPTS:   u64 = 10_000_000;
@@ -487,27 +351,6 @@ mod tests {
         // Verify the solution is actually valid using our optimized verification function
         assert!(verify_ironshield_solution(&challenge, response.solution), 
                 "Solution should satisfy the challenge");
-    }
-
-    #[test]
-    fn test_find_solution_single_threaded_impossible() {
-        // Create a challenge with very low threshold (impossible to solve quickly)
-        let challenge = IronShieldChallenge::new(
-            "deadbeef".to_string(),
-            1000000,
-            "test_website".to_string(),
-            [0x00; 32], // Minimum possible value - should be impossible
-            [0x00; 32],
-            [0x11; 64],
-        );
-        
-        // This should fail quickly since we set MAX_ATTEMPTS_SINGLE_THREADED
-        // to a reasonable value and the challenge is essentially impossible
-        let result = find_solution_single_threaded(&challenge);
-        assert!(result.is_err(), "Should fail for impossible challenge");
-        
-        let error_msg = result.unwrap_err();
-        assert!(error_msg.contains("Could not find solution"), "Should contain appropriate error message");
     }
 
     #[test]

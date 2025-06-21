@@ -1,25 +1,31 @@
-use crate::header::util::deserialize_signature;
-use crate::header::util::serialize_signature;
+use crate::serde_utils::{serialize_signature, deserialize_signature, serialize_32_bytes, deserialize_32_bytes};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-/// * `random_nonce`:     The SHA-256 hash of a random number.
+/// IronShield Challenge structure for the proof-of-work algorithm
+/// 
+/// * `random_nonce`:     The SHA-256 hash of a random number (hex string).
 /// * `created_time`:     Unix milli timestamp for the challenge.
-/// * `expiration_time`:  Unix milli timestamp for the challenge
-///                       expiration time. (created_time + 30 ms)
-/// * `challenge_param`: Size of target number the hashed nonce should be less than.
+/// * `expiration_time`:  Unix milli timestamp for the challenge expiration time.
+/// * `challenge_param`:  Target threshold - hash must be less than this value.
 /// * `website_id`:       The identifier of the website.
 /// * `public_key`:       Ed25519 public key for signature verification.
-/// * `signature`:        Ed25519 signature over 
-///                       (`random_nonce || created_time || expiration_time
-///                       || challenge_param`).
+/// * `challenge_signature`: Ed25519 signature over the challenge data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IronShieldChallenge {
     pub random_nonce:        String,
     pub created_time:        i64,
     pub expiration_time:     i64,
     pub website_id:          String,
+    #[serde(
+        serialize_with = "serialize_32_bytes",
+        deserialize_with = "deserialize_32_bytes"
+    )]
     pub challenge_param:     [u8; 32],
+    #[serde(
+        serialize_with = "serialize_32_bytes",
+        deserialize_with = "deserialize_32_bytes"
+    )]
     pub public_key:          [u8; 32],
     #[serde(
         serialize_with = "serialize_signature",
@@ -29,19 +35,7 @@ pub struct IronShieldChallenge {
 }
 
 impl IronShieldChallenge {
-    /// Constructor, this creates a new `IronShieldChallenge` instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `random_nonce`:     The SHA-256 hash of a random number.
-    /// * `created_time`:     Unix milli timestamp for the challenge
-    ///                       creation time.
-    /// * `challenge_params`: Unix milli timestamp for the challenge
-    ///                       expiration time. (created_time + 30 ms)
-    /// * `public_key`:       Ed25519 public key for signature
-    /// * `signature`:        Ed25519 signature over (`random_nonce ||
-    ///                       created_time || expires_time ||
-    ///                       challenge_params`).
+    /// Constructor for creating a new IronShieldChallenge instance.
     pub fn new(
         random_nonce:     String,
         created_time:     i64,
@@ -54,7 +48,7 @@ impl IronShieldChallenge {
             random_nonce,
             created_time,
             website_id,
-            expiration_time: created_time + 30_000,
+            expiration_time: created_time + 30_000, // 30 seconds
             challenge_param,
             public_key,
             challenge_signature: signature,
@@ -66,8 +60,7 @@ impl IronShieldChallenge {
         Utc::now().timestamp_millis() > self.expiration_time
     }
 
-    /// Returns the remaining time until the
-    /// expiration in milliseconds.
+    /// Returns the remaining time until expiration in milliseconds.
     pub fn time_until_expiration(&self) -> i64 {
         self.expiration_time - Utc::now().timestamp_millis()
     }
@@ -156,4 +149,4 @@ impl IronShieldChallenge {
             challenge_signature,
         })
     }
-}
+} 

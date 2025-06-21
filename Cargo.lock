@@ -596,6 +596,7 @@ dependencies = [
  "hex",
  "http",
  "ironshield-core",
+ "ironshield-types",
  "js-sys",
  "rand",
  "serde",
@@ -620,6 +621,7 @@ dependencies = [
  "hex",
  "http",
  "ironshield-core",
+ "ironshield-types",
  "js-sys",
  "rand",
  "serde",
@@ -637,11 +639,23 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "hex",
+ "ironshield-types",
  "rand",
  "rayon",
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "ironshield-types"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "chrono",
+ "hex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -653,6 +667,7 @@ dependencies = [
  "getrandom",
  "hex",
  "ironshield-core",
+ "ironshield-types",
  "js-sys",
  "rayon",
  "serde",

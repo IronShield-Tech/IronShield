@@ -8,6 +8,7 @@ repository = "" # TODO: Add GitHub repository URL
 license = "BUSL-1.1" # Becomes Apache-2.0 after 2028-07-24
 
 [dependencies]
+ironshield-types = { path = "../ironshield-types" }
 sha2 = "0.10"
 hex = "0.4"
 rayon = { version = "1.8", optional = true }
